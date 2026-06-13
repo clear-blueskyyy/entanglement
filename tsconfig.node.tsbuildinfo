@@ -1,0 +1,1 @@
+{"root":["./vite.config.ts","./api/daily-pair.ts","./api/entangle.ts","./api/_lib/fallback.ts","./api/_lib/llm.ts","./api/_lib/validate.ts","./api/_lib/prompt/entangle.ts"],"version":"5.9.3"}
