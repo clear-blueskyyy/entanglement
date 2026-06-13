@@ -947,5 +947,93 @@
 
 > Prompt 收紧的第一价值，不是立刻把结果变成 A，而是先把“软联想”和“现编机构名”挤出去，让模型学会稳定走硬骨架。真正的高惊喜，通常要建立在这一步之后。
 >
-> 更落地一点：以后 benchmark 复盘时，不能只问“像不像人写的”，而要先问“合同、预算、许可、土地、物流、基础设施这些硬东西到底有没有在流动”。如果这个问题答不上来，路径大概率还不够硬。
+> 更落地一点：以后 benchmark 复盘时，不能只问"像不像人写的"，而要先问"合同、预算、许可、土地、物流、基础设施这些硬东西到底有没有在流动"。如果这个问题答不上来，路径大概率还不够硬。
+
+---
+
+## 六、部署与发布
+
+### 6.1 首次线上部署（2026-06-13）
+
+#### 6.1.1 部署目标
+
+将本地可用的产品发布到公网，获得可公开分享的访问链接。
+
+#### 6.1.2 部署平台选择
+
+选用 **Vercel**，理由：
+- 项目本身已配置好 `vercel.json`，`api/*.ts` 对应 Vercel Serverless Functions
+- 前端 Vite 构建 + 后端 Serverless 一体化部署，零额外配置
+- 免费额度足够个人产品使用
+
+#### 6.1.3 部署过程与踩坑
+
+**问题1：Friday API 在公网不可用**
+- 现象：`FRIDAY_APP_ID` 对应的接口 `aigc.sankuai.com` 是美团内网地址，Vercel 服务器在公网无法访问
+- 结论：线上环境必须换用公网可访问的模型 Provider（智谱 / OpenAI）
+- 处理方式：`api/_lib/llm.ts` 已实现多 provider 自动回退，只需在 Vercel 环境变量中配置 `ZHIPU_API_KEY` 或 `OPENAI_API_KEY` 即可，代码不需要改动
+
+**问题2：Vercel Serverless 函数 import 路径报错**
+- 现象：Vercel 构建日志报 `TS2835: Relative import paths need explicit file extensions`
+- 原因：Vercel 的 Serverless 函数使用 `moduleResolution: node16`，要求 import 路径必须带 `.js` 后缀（即使源文件是 `.ts`）
+- 受影响文件：`api/entangle.ts`、`api/daily-pair.ts`、`api/_lib/fallback.ts`
+- 修复：将所有 `_lib/` 相对路径 import 统一加上 `.js` 后缀，例如：
+  ```ts
+  // 修复前
+  import { ... } from "./_lib/llm";
+  // 修复后
+  import { ... } from "./_lib/llm.js";
+  ```
+- **教训：只要 `api/` 下的 TS 文件新增 import，就要立刻加 `.js` 后缀，否则本地构建通过但 Vercel 构建失败**
+
+**问题3：Vercel CLI 需要先登录**
+- 现象：`vercel --yes --prod` 报 `No existing credentials found`
+- 修复：执行 `vercel login --github`，会输出一个授权 URL，在浏览器打开完成授权即可，无需交互式终端
+
+#### 6.1.4 最终部署结果
+
+| 项目 | 地址 |
+|------|------|
+| **线上访问链接** | https://taggling.vercel.app |
+| **Vercel 项目控制台** | https://vercel.com/doudou-projects/taggling |
+| **GitHub 代码仓库** | https://github.com/clear-blueskyyy/entanglement |
+
+#### 6.1.5 代码仓库同步（GitHub）
+
+- 平台：GitHub，仓库名 `entanglement`，账号 `clear-blueskyyy`
+- 认证方式：SSH Key（`~/.ssh/id_ed25519`），已添加到 GitHub 账号
+- 推送命令：`git push -u origin main`
+- **注意：本地 remote 已配置为 SSH 方式**（`git@github.com:clear-blueskyyy/entanglement.git`），后续 push 无需密码
+
+#### 6.1.6 线上激活模型的操作步骤
+
+目前线上前端可访问，但 `/api/entangle` 调用会返回 `E_PROVIDER_UNAVAILABLE`，因为 Vercel 环境变量尚未配置模型 Key。
+
+激活步骤：
+1. 打开 https://vercel.com/doudou-projects/taggling/settings/environment-variables
+2. 添加以下任意一个变量：
+
+| 变量名 | 说明 | 获取地址 |
+|--------|------|----------|
+| `ZHIPU_API_KEY` | 格式必须是 `id.secret` | https://bigmodel.cn（免费注册） |
+| `OPENAI_API_KEY` | 格式 `sk-xxx` | https://platform.openai.com |
+
+3. 保存后在 Deployments 页点 **Redeploy**，环境变量生效
+
+#### 6.1.7 后续每次更新代码的流程
+
+```bash
+# 1. 改完代码后提交
+git add -A && git commit -m "描述改动"
+
+# 2. 推送到 GitHub
+git push
+
+# 3. Vercel 会自动触发重新部署（需先在 Vercel 控制台连接 GitHub 仓库）
+# 或者手动重部署：
+vercel --prod
+```
+
+> **建议**：在 Vercel 控制台把项目连接到 GitHub 仓库（Settings → Git），这样每次 `git push` 后 Vercel 会自动部署，不需要手动跑 `vercel --prod`。
+
 
