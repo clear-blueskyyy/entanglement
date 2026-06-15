@@ -994,7 +994,8 @@
 
 | 项目 | 地址 |
 |------|------|
-| **线上访问链接** | https://taggling.vercel.app |
+| **线上访问链接（自定义域名）** | https://entanglement.doudou.design |
+| **线上访问链接（Vercel 默认）** | https://taggling.vercel.app（国内需 VPN）|
 | **Vercel 项目控制台** | https://vercel.com/doudou-projects/taggling |
 | **GitHub 代码仓库** | https://github.com/clear-blueskyyy/entanglement |
 
@@ -1035,5 +1036,55 @@ vercel --prod
 ```
 
 > **建议**：在 Vercel 控制台把项目连接到 GitHub 仓库（Settings → Git），这样每次 `git push` 后 Vercel 会自动部署，不需要手动跑 `vercel --prod`。
+
+### 6.2 自定义域名配置（2026-06-15）
+
+#### 6.2.1 背景
+
+Vercel 默认域名 `*.vercel.app` 在国内大陆被 DNS 污染封锁，需要绑定自定义域名才能国内直接访问。
+
+#### 6.2.2 域名选购
+
+- 在阿里云万网购买域名 `doudou.design`
+- **注意**：`doudou.com` / `.cn` / `.net` / `.xyz` 全部已被注册，`doudou.design` 是可注册的最佳选项（¥23首年）
+- `.design` 是国际域名，**无需 ICP 备案**，直接绑 Vercel 即可使用
+- **一个域名可挂无限项目**，通过子域名区分（`entanglement.doudou.design`、`app2.doudou.design` 等）
+
+#### 6.2.3 配置过程与踩坑
+
+**问题1：买完域名没立即做实名认证**
+- 现象：DNS 控制台可以添加解析记录，但权威 DNS 查不到，`dig` 返回空
+- 原因：域名未完成实名认证，阿里云 NS 服务器未激活该域名的解析
+- 修复：立即提交实名认证（身份证），1-2 小时内审核通过
+- **教训：买完域名第一件事就是提交实名，否则后续所有 DNS 操作都是无效的**
+
+**问题2：收到"三天等待"短信**
+- 现象：实名通过后收到短信"如需备案请等待三天信息同步"
+- 结论：**与本次使用完全无关**，该提示仅针对 ICP 备案场景，`.design` 国际域名绑 Vercel 不需要备案
+
+**问题3：Vercel CLI vs 浏览器操作**
+- 浏览器自动化（catdesk）无法复用系统 Chrome 的登录 cookie，每次都要重新登录
+- **解决方案：用 Vercel CLI 直接命令行添加域名，完全绕过浏览器**
+  ```bash
+  npx vercel domains add entanglement.doudou.design --scope doudou-projects
+  ```
+  命令直接返回所需的 DNS 配置值，无需手动登录 Vercel 控制台
+
+#### 6.2.4 DNS 配置
+
+Vercel 推荐的配置方式（A 记录，比 CNAME 更稳定）：
+
+| 记录类型 | 主机记录 | 记录值 |
+|---------|---------|--------|
+| `A` | `entanglement` | `76.76.21.21` |
+
+在阿里云 DNS 控制台（https://dns.console.aliyun.com）手动添加。
+
+#### 6.2.5 最终结果
+
+- 自定义域名：**https://entanglement.doudou.design** ✅ 国内直接访问
+- DNS 解析：`entanglement.doudou.design` → `76.76.21.21`
+- HTTPS：Vercel 自动签发 SSL 证书，HTTP/2 正常响应
+- 传播时间：权威 DNS 约 10 分钟，全球传播约 1-3 小时
 
 
