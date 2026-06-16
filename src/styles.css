@@ -392,7 +392,7 @@ button {
 }
 
 .shell {
-  padding: 40px 20px 80px;
+  padding: 24px 20px 80px;
 }
 
 .container {
@@ -438,8 +438,8 @@ button {
 
 .card-hero {
   display: grid;
-  gap: 28px;
-  padding: 36px;
+  gap: 20px;
+  padding: 28px;
   overflow: hidden;
   background:
     linear-gradient(140deg, rgba(10, 16, 28, 0.92), rgba(10, 16, 28, 0.8)),
@@ -471,9 +471,14 @@ button {
 .app.has-result .card-hero {
   transform: scale(0.96) translateY(-10px);
   opacity: 0.62;
-  gap: 18px;
-  padding: 26px;
+  gap: 14px;
+  padding: 22px;
   pointer-events: auto;
+}
+
+.app.has-result .card-hero.hero-hovered {
+  transform: scale(1) translateY(0);
+  opacity: 1;
 }
 
 .hero-copy {
@@ -483,7 +488,7 @@ button {
 
 .brand-lockup {
   text-align: center;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .brand-en {
@@ -514,21 +519,21 @@ button {
 }
 
 .hero-subtitle {
-  margin: 20px 0 0;
+  margin: 12px 0 0;
   max-width: 52ch;
   margin-inline: auto;
   font-size: 14px;
   color: var(--text-secondary);
-  line-height: 1.8;
+  line-height: 1.7;
   text-align: center;
 }
 
 .hero-intent {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
   justify-content: center;
-  margin-top: 20px;
+  margin-top: 12px;
 }
 
 .intent-pill {
@@ -547,7 +552,7 @@ button {
 
 .hero-stage {
   display: grid;
-  gap: 20px;
+  gap: 16px;
   position: relative;
   z-index: 1;
 }
@@ -573,8 +578,8 @@ button {
 .pair-composer-shell {
   position: relative;
   display: grid;
-  gap: 18px;
-  padding: 24px;
+  gap: 14px;
+  padding: 20px;
   border-radius: calc(var(--radius-lg) + 4px);
   border: 1px solid rgba(212, 168, 83, 0.14);
   background:
@@ -769,14 +774,58 @@ button {
 .button.ghost {
   color: var(--amber);
   background: transparent;
-  border: 1px solid transparent;
+  border: 1px solid rgba(212, 168, 83, 0.22);
   box-shadow: none;
   font-weight: 500;
+  animation: ghost-glow-pulse 2.2s ease-in-out infinite;
 }
 
 .button.ghost:hover:not(:disabled) {
-  border-color: var(--border-mid);
+  border-color: var(--border-strong);
   background: var(--amber-dim);
+  box-shadow: 0 0 18px 4px rgba(212, 168, 83, 0.3);
+  animation-play-state: paused;
+}
+
+@keyframes ghost-glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(212, 168, 83, 0);
+    border-color: rgba(212, 168, 83, 0.22);
+  }
+  50% {
+    box-shadow: 0 0 14px 3px rgba(212, 168, 83, 0.28);
+    border-color: rgba(212, 168, 83, 0.55);
+  }
+}
+
+/* 「先看示例路径」按钮内部增强亮度 */
+.button-ghost-lit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-shadow: 0 0 10px rgba(212, 168, 83, 0.5);
+}
+
+.ghost-btn-icon {
+  font-size: 11px;
+  color: var(--amber);
+  animation: ghost-icon-spin-glow 3s ease-in-out infinite;
+  filter: drop-shadow(0 0 4px rgba(212, 168, 83, 0.7));
+  display: inline-block;
+}
+
+@keyframes ghost-icon-spin-glow {
+  0%, 100% {
+    opacity: 0.7;
+    transform: rotate(0deg) scale(1);
+    filter: drop-shadow(0 0 3px rgba(212, 168, 83, 0.5));
+  }
+  50% {
+    opacity: 1;
+    transform: rotate(180deg) scale(1.2);
+    filter: drop-shadow(0 0 7px rgba(212, 168, 83, 0.9));
+  }
 }
 
 .button.subtle {
@@ -799,7 +848,7 @@ button {
 
 .recommend-stack {
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 .recommend-section {
@@ -1072,9 +1121,14 @@ button {
 
 .insight-card-primary {
   background:
-    radial-gradient(circle at top left, rgba(212, 168, 83, 0.1), transparent 40%),
-    rgba(7, 12, 22, 0.8);
-  border-color: var(--border-mid);
+    radial-gradient(circle at top left, rgba(212, 168, 83, 0.18), transparent 44%),
+    radial-gradient(circle at bottom right, rgba(212, 168, 83, 0.06), transparent 30%),
+    rgba(7, 12, 22, 0.82);
+  border-color: var(--border-strong);
+  box-shadow:
+    0 0 0 1px rgba(212, 168, 83, 0.1),
+    0 8px 32px rgba(212, 168, 83, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .insight-card-secondary {
@@ -1085,13 +1139,26 @@ button {
 
 .insight-title {
   font-family: var(--font-display-cn);
-  font-size: 1.2rem;
+  font-size: 1.35rem;
   line-height: 1.25;
+  color: var(--amber);
+  text-shadow:
+    0 0 16px rgba(212, 168, 83, 0.45),
+    0 0 32px rgba(212, 168, 83, 0.2);
+  letter-spacing: 0.04em;
 }
 
 .insight-copy {
   margin: 8px 0 0;
   font-size: 13px;
+}
+
+/* 路线主题卡片（primary）里的 hook 描述加强对比 */
+.insight-card-primary .insight-copy {
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.72;
+  opacity: 0.88;
 }
 
 .surprise-meter-row {
@@ -1879,13 +1946,55 @@ button {
   }
 }
 
+/* ── 首屏左侧轨道装置装饰（Canvas 版） ─────────────────── */
+
+.hero-deco {
+  display: none;
+  margin-top: 20px;
+  width: 100%;
+}
+
+.hero-deco-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 24px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 52% 44%, rgba(212, 168, 83, 0.04), transparent 30%),
+    radial-gradient(circle at 70% 78%, rgba(94, 126, 255, 0.035), transparent 26%),
+    linear-gradient(180deg, rgba(13, 18, 30, 0.9), rgba(7, 11, 20, 0.8));
+  border: 1px solid rgba(212, 168, 83, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    inset 0 -18px 48px rgba(0, 0, 0, 0.28),
+    0 24px 60px rgba(0, 0, 0, 0.28);
+  isolation: isolate;
+}
+
+.hero-deco-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@media (min-width: 900px) {
+  .hero-deco {
+    display: block;
+  }
+}
+
 /* ── 响应式 ──────────────────────────────────────────── */
 
 @media (min-width: 900px) {
   .card-hero {
-    grid-template-columns: minmax(0, 1.05fr) minmax(420px, 0.95fr);
+    grid-template-columns: minmax(0, 1.14fr) minmax(420px, 0.96fr);
     align-items: start;
-    padding: 36px;
+    padding: 28px;
   }
 
   .brand-lockup {
