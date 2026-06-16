@@ -2025,16 +2025,44 @@ button {
 }
 
 @media (max-width: 899px) {
+  .app.has-result .card-hero {
+    transform: none;
+    opacity: 1;
+    gap: 20px;
+    padding: 24px;
+  }
+
   .constellation-shell {
     grid-template-columns: 1fr;
   }
 
-  .reveal-sidecar {
-    position: static;
-  }
-
+  .hero-stage-header,
+  .result-head,
+  .path-stage-head,
   .empty-state-header {
     flex-direction: column;
+    gap: 16px;
+  }
+
+  .hero-utility,
+  .path-controls.compact {
+    width: 100%;
+    justify-content: stretch;
+    flex-direction: column;
+  }
+
+  .hero-utility .button,
+  .path-controls .button {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+
+  .result-note {
+    max-width: none;
+  }
+
+  .reveal-sidecar {
+    position: static;
   }
 
   .pair-composer-shell {
@@ -2043,37 +2071,245 @@ button {
 
   .pair-input-shell {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
 
   .pair-sigil {
     justify-content: center;
-    padding: 4px 0;
+    padding: 8px 0;
+    transform: rotate(90deg);
+  }
+
+  .constellation-node {
+    width: 100%;
+    max-width: 100%;
+    justify-content: center;
+  }
+
+  .node-text {
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+
+  .edge-copy {
+    max-width: min(100%, 300px);
   }
 
   .pair-composer-orbit-left,
   .pair-composer-orbit-right {
     display: none;
   }
+
+  .brand-cn {
+    font-size: clamp(2rem, 8vw, 3rem);
+  }
+
+  .section-title {
+    font-size: clamp(1.2rem, 4vw, 1.6rem);
+  }
+
+  .hero-subtitle {
+    font-size: 14px;
+    padding: 0 8px;
+  }
+
+  .hero-intent {
+    gap: 6px;
+  }
+
+  .intent-pill {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+
+  .path-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .insight-card {
+    flex: 1 1 auto;
+    padding: 16px;
+  }
+
+  .empty-state-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .ritual-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .empty-state-aside {
+    padding: 24px 16px;
+  }
+
+  .empty-orbit {
+    width: 180px;
+  }
+
+  .recommend-label-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .recommend-pill {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .example-list {
+    justify-content: center;
+  }
+
+  .example-chip {
+    flex: 1 1 calc(50% - 5px);
+    min-width: 120px;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .primary-action {
+    min-width: auto;
+    width: 100%;
+  }
+
+  .path-tabs {
+    justify-content: center;
+  }
+
+  .path-tab {
+    flex: 1 1 calc(50% - 5px);
+    min-width: 140px;
+    max-width: 200px;
+  }
+
+  .finale-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .finale-actions .button {
+    width: 100%;
+  }
+
+  .constellation-edge {
+    padding: 20px 0;
+  }
+
+  .edge-copy {
+    font-size: 12px;
+    padding: 8px 12px;
+    max-width: 85%;
+  }
+
+  .reveal-sidecar {
+    gap: 12px;
+  }
+
+  .path-card {
+    padding: 16px;
+  }
+
+  .status-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .status-actions .button {
+    width: 100%;
+  }
+
+  .hero-stage-header .section-title {
+    font-size: 16px;
+    line-height: 1.4;
+  }
+
+  .pair-guides {
+    justify-content: center;
+  }
+
+  .guide-pill {
+    font-size: 11px;
+    padding: 6px 10px;
+  }
+
+  .loading-status-card {
+    padding: 14px 16px;
+  }
+
+  .loading-copy {
+    font-size: 14px;
+  }
+
+  .loading-subcopy {
+    font-size: 12px;
+  }
+
+  .constellation-node-anchor .node-text {
+    font-size: 15px;
+  }
+
+  .constellation-node.middle .node-text {
+    font-size: 13px;
+  }
+
+  .constellation-node {
+    padding: 12px 16px;
+    min-height: 44px;
+  }
+
+  .constellation-node-hidden .node-text {
+    font-size: 18px;
+  }
 }
 
 @media (max-width: 640px) {
   .shell {
-    padding: 20px 12px 52px;
+    padding: 16px 12px 40px;
+  }
+
+  .container {
+    max-width: 100%;
+  }
+
+  .page-stack {
+    gap: 16px;
   }
 
   .card,
   .path-stage,
   .pair-composer-shell {
-    padding: 18px;
+    padding: 16px;
     border-radius: var(--radius-md);
   }
 
+  .card-hero {
+    padding: 20px 16px;
+    gap: 16px;
+  }
+
   .brand-cn {
-    font-size: 2.2rem;
+    font-size: clamp(1.8rem, 7vw, 2.4rem);
+    letter-spacing: 0.06em;
+  }
+
+  .brand-en {
+    font-size: 11px;
+    letter-spacing: 0.3em;
+  }
+
+  .brand-tagline {
+    font-size: 13px;
+    letter-spacing: 0.12em;
   }
 
   .orbit-body {
-    opacity: 0.8;
+    opacity: 0.6;
+    transform: scale(0.8);
   }
 
   .button,
@@ -2083,19 +2319,64 @@ button {
   .guide-pill {
     width: 100%;
     justify-content: center;
+    min-height: 44px;
   }
 
   .button.subtle,
   .button.ghost.subtle {
-    width: auto;
+    width: 100%;
   }
 
+  .button {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+
+  .hero-utility,
   .hero-actions,
   .path-controls,
   .finale-actions,
   .status-actions,
   .pair-guides {
     flex-direction: column;
+    gap: 8px;
+  }
+
+  .pair-input-shell {
+    gap: 8px;
+  }
+
+  .input-large {
+    min-height: 48px;
+    font-size: 16px;
+    padding: 12px 14px;
+  }
+
+  .input-label {
+    font-size: 11px;
+  }
+
+  .constellation-node {
+    padding: 10px 12px;
+    min-height: 44px;
+  }
+
+  .constellation-node-anchor .node-text {
+    font-size: 14px;
+  }
+
+  .constellation-node.middle .node-text {
+    font-size: 12px;
+  }
+
+  .constellation-node-hidden .node-text {
+    font-size: 16px;
+  }
+
+  .edge-copy {
+    font-size: 11px;
+    padding: 6px 10px;
+    max-width: 90%;
   }
 
   .path-controls.compact {
@@ -2105,5 +2386,363 @@ button {
   .result-title {
     flex-direction: column;
     gap: 4px;
+    align-items: center;
+    text-align: center;
+  }
+
+  .result-title .result-divider {
+    transform: rotate(90deg);
+    margin: 4px 0;
+  }
+
+  .section-kicker {
+    font-size: 10px;
+    text-align: center;
+  }
+
+  .stage-title {
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .path-stage-head {
+    gap: 16px;
+  }
+
+  .path-stage {
+    padding: 16px;
+  }
+
+  .path-tab {
+    min-width: 120px;
+    padding: 10px 12px;
+  }
+
+  .path-tab-subtitle {
+    font-size: 10px;
+  }
+
+  .insight-title {
+    font-size: 1.1rem;
+  }
+
+  .surprise-score {
+    font-size: 1.5rem;
+  }
+
+  .insight-copy {
+    font-size: 12px;
+  }
+
+  .insight-card-primary .insight-copy {
+    font-size: 13px;
+  }
+
+  .example-chip {
+    flex: 1 1 100%;
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .example-list {
+    gap: 8px;
+  }
+
+  .ritual-card {
+    padding: 16px;
+  }
+
+  .ritual-card h3 {
+    font-size: 14px;
+  }
+
+  .ritual-card p {
+    font-size: 12px;
+  }
+
+  .ritual-index {
+    font-size: 22px;
+  }
+
+  .empty-aside-copy {
+    font-size: 12px;
+  }
+
+  .hero-stage-header .section-title {
+    font-size: 15px;
+    text-align: center;
+  }
+
+  .hero-stage-header {
+    text-align: center;
+  }
+
+  .recommend-stack {
+    gap: 16px;
+  }
+
+  .recommend-label-row {
+    align-items: center;
+  }
+
+  .recommend-note {
+    font-size: 12px;
+    text-align: center;
+  }
+
+  .guide-pill {
+    font-size: 10px;
+    padding: 6px 10px;
+  }
+
+  .pair-guides {
+    gap: 6px;
+  }
+
+  .status {
+    font-size: 12px;
+    text-align: center;
+  }
+
+  .hero-status {
+    text-align: center;
+  }
+
+  .constellation-track {
+    gap: 4px;
+  }
+
+  .constellation-edge {
+    padding: 16px 0;
+    min-height: 56px;
+  }
+
+  .edge-line {
+    width: 2px;
+  }
+
+  .reveal-sidecar {
+    gap: 10px;
+  }
+
+  .path-card {
+    padding: 14px;
+  }
+
+  .path-summary {
+    font-size: 14px;
+  }
+
+  .path-detail {
+    font-size: 12px;
+  }
+
+  .summary-text {
+    font-size: 14px;
+  }
+
+  .finale-shell {
+    gap: 16px;
+  }
+
+  .path-share-error {
+    font-size: 12px;
+  }
+
+  .loading-status-card {
+    padding: 14px;
+  }
+
+  .loading-kicker {
+    font-size: 10px;
+  }
+
+  .loading-copy {
+    font-size: 13px;
+  }
+
+  .loading-subcopy {
+    font-size: 11px;
+  }
+
+  .starfield-grid {
+    background-size: 160px 160px, 220px 220px, 180px 180px, 80px 80px, 80px 80px;
+  }
+
+  .ambient {
+    width: 20rem;
+    height: 20rem;
+    filter: blur(60px);
+  }
+
+  .ambient-left {
+    top: -6rem;
+    left: -8rem;
+  }
+
+  .ambient-right {
+    bottom: 6rem;
+    right: -10rem;
+  }
+}
+
+/* 超小屏幕优化 (iPhone SE 等) */
+@media (max-width: 375px) {
+  .shell {
+    padding: 12px 10px 32px;
+  }
+
+  .card,
+  .path-stage,
+  .pair-composer-shell {
+    padding: 14px;
+  }
+
+  .card-hero {
+    padding: 16px 12px;
+  }
+
+  .brand-cn {
+    font-size: 1.6rem;
+  }
+
+  .brand-tagline {
+    font-size: 12px;
+  }
+
+  .hero-subtitle {
+    font-size: 13px;
+    padding: 0;
+  }
+
+  .intent-pill {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+
+  .button {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  .input-large {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 16px;
+  }
+
+  .section-title {
+    font-size: 1.1rem;
+  }
+
+  .hero-stage-header .section-title {
+    font-size: 14px;
+  }
+
+  .path-tab {
+    min-width: 100px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .constellation-node {
+    padding: 8px 10px;
+  }
+
+  .constellation-node-anchor .node-text {
+    font-size: 13px;
+  }
+
+  .constellation-node.middle .node-text {
+    font-size: 11px;
+  }
+
+  .edge-copy {
+    font-size: 10px;
+    padding: 5px 8px;
+  }
+
+  .insight-title {
+    font-size: 1rem;
+  }
+
+  .surprise-score {
+    font-size: 1.3rem;
+  }
+
+  .example-chip {
+    font-size: 11px;
+    padding: 8px 10px;
+  }
+
+  .guide-pill {
+    font-size: 9px;
+    padding: 5px 8px;
+  }
+
+  .status {
+    font-size: 11px;
+  }
+
+  .path-summary {
+    font-size: 13px;
+  }
+
+  .path-detail {
+    font-size: 11px;
+  }
+}
+
+/* 触摸设备优化 */
+@media (hover: none) and (pointer: coarse) {
+  .button:hover:not(:disabled) {
+    transform: none;
+  }
+
+  .button:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  .constellation-node.middle:hover {
+    transform: none;
+  }
+
+  .constellation-node.middle:active {
+    transform: scale(0.98);
+  }
+
+  .example-chip:hover {
+    transform: none;
+  }
+
+  .example-chip:active {
+    transform: scale(0.98);
+  }
+
+  .recommend-pill:hover {
+    box-shadow: none;
+  }
+
+  .recommend-pill:active {
+    transform: scale(0.98);
+  }
+
+  .input:focus {
+    font-size: 16px;
+  }
+}
+
+/* 防止移动端表单缩放 */
+@media screen and (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    font-size: 16px;
   }
 }

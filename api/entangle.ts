@@ -161,7 +161,7 @@ export default async function handler(req: any, res: any) {
         createErrorPayload(
           requestId,
           "E_PROVIDER_UNAVAILABLE",
-          "服务端未配置 FRIDAY_APP_ID、OPENAI_API_KEY 或 ZHIPU_API_KEY，请先完成环境变量配置",
+          "似乎还缺少一些必要的环境变量设置。别担心，您可以先点击 [示例路径] 进行体验",
           false
         )
       );
