@@ -408,6 +408,43 @@ function saveCachedEntanglement(result: EntanglementResult) {
   writeEntangleCache(nextEntries);
 }
 
+// 丝滑的 ease-in-out-cubic 缓动 - 开始和结束都柔和，中间加速流畅
+function easeInOutCubic(t: number, b: number, c: number, d: number) {
+  const normalizedTime = t / d;
+  if (normalizedTime < 0.5) {
+    // 前半段 - 柔和加速
+    return b + c * 4 * normalizedTime * normalizedTime * normalizedTime;
+  }
+  // 后半段 - 优雅减速
+  const et = -2 * normalizedTime + 2;
+  return b + c * (1 - Math.pow(et, 3) / 2);
+}
+
+function smoothScrollTo(element: HTMLElement, duration: number) {
+  const targetPosition = element.getBoundingClientRect().top + window.scrollY - 16;
+  const startPosition = window.scrollY;
+  const distance = targetPosition - startPosition;
+  let startTime: number | null = null;
+
+  function animation(currentTime: number) {
+    if (startTime === null) startTime = currentTime;
+    const timeElapsed = currentTime - startTime;
+
+    // 使用丝滑的 cubic 缓动
+    const run = easeInOutCubic(timeElapsed, startPosition, distance, duration);
+
+    // 使用 { top: y } 对象形式，某些浏览器优化更好
+    window.scrollTo({ top: run, behavior: 'auto' });
+
+    if (timeElapsed < duration) {
+      window.requestAnimationFrame(animation);
+    } else {
+      window.scrollTo({ top: targetPosition, behavior: 'auto' });
+    }
+  }
+  window.requestAnimationFrame(animation);
+}
+
 export default function App() {
   const [termA, setTermA] = useState("");
   const [termB, setTermB] = useState("");
@@ -420,7 +457,9 @@ export default function App() {
   const [errorState, setErrorState] = useState<ErrorState | null>(null);
   const [result, setResult] = useState<EntanglementResult | null>(null);
   const [lastEntangleRequest, setLastEntangleRequest] = useState<EntangleRequest | null>(null);
+  const [heroHovered, setHeroHovered] = useState(false);
   const resultRef = useRef<HTMLElement | null>(null);
+  const heroDecoCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const activeLoadingHint = loadingHints[loadingHintIndex] ?? loadingHints[0];
   const activeLoadingState = loadingStates[loadingHintIndex] ?? loadingStates[0];
@@ -450,10 +489,271 @@ export default function App() {
     }
 
     const element = resultRef.current;
-    window.requestAnimationFrame(() => {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+    // 延迟一点开始滚动，让结果先渲染出来
+    window.setTimeout(() => {
+      window.requestAnimationFrame(() => {
+        smoothScrollTo(element, 1600); // 1.6s 慢速推出，更有仪式感
+      });
+    }, 200);
   }, [result?.id]);
+
+  useEffect(() => {
+    const canvas = heroDecoCanvasRef.current;
+    if (!canvas) {
+      return;
+    }
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      return;
+    }
+
+    const colors = ["#E5B76B", "#8CA8FF", "#E2E8F0"] as const;
+    const dpr = window.devicePixelRatio || 1;
+
+    let width = 0;
+    let height = 0;
+    let centerX = 0;
+    let centerY = 0;
+    let animationFrame = 0;
+    let lastCanvasWidth = 0;
+    let lastCanvasHeight = 0;
+
+    type OrbitConfig = {
+      orbitRadiusX: number;
+      orbitRadiusY: number;
+      tiltAngle: number;
+      speed: number;
+      axisAngle: number;
+      axisSpeed: number;
+      color: string;
+      size: number;
+      planetCount: number;
+    };
+
+    class Planet {
+      orbit: OrbitConfig;
+      speed: number;
+      color: string;
+      baseSize: number;
+      angle: number;
+      x: number;
+      y: number;
+      z: number;
+      scale: number;
+      screenX: number;
+      screenY: number;
+
+      constructor(orbit: OrbitConfig) {
+        this.orbit = orbit;
+        this.speed = orbit.speed * (0.85 + Math.random() * 0.3);
+        this.color = orbit.color;
+        this.baseSize = orbit.size * (0.78 + Math.random() * 0.55);
+        this.angle = Math.random() * Math.PI * 2;
+        this.x = 0;
+        this.y = 0;
+        this.z = 0;
+        this.scale = 1;
+        this.screenX = 0;
+        this.screenY = 0;
+      }
+
+      private projectPoint(angle: number) {
+        const flatX = Math.cos(angle) * this.orbit.orbitRadiusX;
+        const flatZ = Math.sin(angle) * this.orbit.orbitRadiusY;
+
+        const tiltedY = flatZ * Math.sin(this.orbit.tiltAngle);
+        const tiltedZ = flatZ * Math.cos(this.orbit.tiltAngle);
+
+        const axisCos = Math.cos(this.orbit.axisAngle);
+        const axisSin = Math.sin(this.orbit.axisAngle);
+        const rotatedX = flatX * axisCos - tiltedZ * axisSin;
+        const rotatedZ = flatX * axisSin + tiltedZ * axisCos;
+
+        // 使用统一的最小边长来计算，确保星星保持正圆
+        const minDimension = Math.min(width, height);
+        const focalLength = Math.max(560, minDimension * 2.2);
+        const scale = focalLength / (focalLength + rotatedZ);
+
+        // 基于最小边长的统一坐标系，确保比例一致
+        const baseCenterX = minDimension * 0.53;
+        const baseCenterY = minDimension * 0.54;
+
+        // 居中偏移
+        const offsetX = (width - minDimension) / 2;
+        const offsetY = (height - minDimension) / 2;
+
+        return {
+          x: rotatedX,
+          y: tiltedY,
+          z: rotatedZ,
+          scale,
+          screenX: offsetX + baseCenterX + rotatedX * scale,
+          screenY: offsetY + baseCenterY + tiltedY * scale,
+        };
+      }
+
+      update() {
+        this.angle += this.speed;
+        const point = this.projectPoint(this.angle);
+        this.x = point.x;
+        this.y = point.y;
+        this.z = point.z;
+        this.scale = point.scale;
+        this.screenX = point.screenX;
+        this.screenY = point.screenY;
+      }
+
+      draw() {
+        const alpha = Math.max(0.08, Math.min(0.52, this.scale * 0.65));
+        const currentSize = Math.max(0.12, this.baseSize * this.scale);
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 11 * this.scale;
+        ctx.shadowColor = this.color;
+        ctx.beginPath();
+        ctx.arc(this.screenX, this.screenY, currentSize, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      drawOrbitLine() {
+        const sampleCount = 72;
+
+        ctx.save();
+        ctx.globalAlpha = 0.22;
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.06)";
+        ctx.lineWidth = 0.75;
+        ctx.beginPath();
+
+        for (let i = 0; i <= sampleCount; i += 1) {
+          const theta = (i / sampleCount) * Math.PI * 2;
+          const point = this.projectPoint(theta);
+          if (i === 0) {
+            ctx.moveTo(point.screenX, point.screenY);
+          } else {
+            ctx.lineTo(point.screenX, point.screenY);
+          }
+        }
+
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    const planets: Planet[] = [];
+    const orbitConfigs: OrbitConfig[] = [];
+
+    function buildScene() {
+      planets.length = 0;
+      orbitConfigs.length = 0;
+
+      const minSize = Math.min(width, height);
+      const base = minSize * 0.14;
+
+      for (let i = 0; i < 6; i += 1) {
+        const orbitRadiusX = base + i * minSize * 0.085;
+        const orbitRadiusY = orbitRadiusX * (0.54 + (i % 3) * 0.12);
+        const tiltAngle = Math.PI * (0.38 + Math.random() * 0.26);
+        const speed = (0.0016 + Math.random() * 0.0022) * (i % 2 === 0 ? 1 : -1);
+        const axisSpeed = (0.00045 + Math.random() * 0.00065) * (i % 2 === 0 ? 1 : -1);
+        const color = colors[i % colors.length];
+        const size = 1.8 + Math.random() * 2.6;
+        const planetCount = 1 + (i % 3);
+
+        const orbit = {
+          orbitRadiusX,
+          orbitRadiusY,
+          tiltAngle,
+          speed,
+          axisAngle: Math.random() * Math.PI * 2,
+          axisSpeed,
+          color,
+          size,
+          planetCount,
+        };
+
+        orbitConfigs.push(orbit);
+
+        for (let p = 0; p < planetCount; p += 1) {
+          planets.push(new Planet(orbit));
+        }
+      }
+    }
+
+    function resizeCanvas() {
+      const parent = canvas.parentElement;
+      if (!parent) {
+        return;
+      }
+
+      const nextWidth = Math.floor(parent.clientWidth);
+      const nextHeight = Math.floor(parent.clientHeight);
+
+      if (nextWidth < 2 || nextHeight < 2) {
+        return;
+      }
+
+      if (nextWidth === lastCanvasWidth && nextHeight === lastCanvasHeight) {
+        return;
+      }
+
+      width = nextWidth;
+      height = nextHeight;
+      lastCanvasWidth = nextWidth;
+      lastCanvasHeight = nextHeight;
+
+      canvas.width = Math.max(1, Math.floor(width * dpr));
+      canvas.height = Math.max(1, Math.floor(height * dpr));
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      centerX = width * 0.53;
+      centerY = height * 0.54;
+
+      buildScene();
+    }
+
+    function animate() {
+      ctx.fillStyle = "rgba(5, 8, 20, 0.2)";
+      ctx.fillRect(0, 0, width, height);
+
+      for (const orbit of orbitConfigs) {
+        orbit.axisAngle += orbit.axisSpeed;
+      }
+
+      const seenOrbits = new Set<OrbitConfig>();
+      for (const planet of planets) {
+        if (seenOrbits.has(planet.orbit)) {
+          continue;
+        }
+        seenOrbits.add(planet.orbit);
+        planet.drawOrbitLine();
+      }
+
+      planets.forEach((planet) => planet.update());
+      planets.sort((a, b) => b.z - a.z);
+      planets.forEach((planet) => planet.draw());
+
+      animationFrame = window.requestAnimationFrame(animate);
+    }
+
+    const onWindowResize = () => {
+      resizeCanvas();
+    };
+
+    window.addEventListener("resize", onWindowResize);
+
+    resizeCanvas();
+    animate();
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      window.removeEventListener("resize", onWindowResize);
+    };
+  }, []);
 
   async function loadDailyPair() {
     try {
@@ -699,7 +999,11 @@ export default function App() {
       <div className="ambient ambient-right" />
 
       <div className="container page-stack">
-        <section className={`card card-hero ${result ? "hero-condensed" : ""}`}>
+        <section
+          className={`card card-hero ${result ? "hero-condensed" : ""} ${heroHovered ? "hero-hovered" : ""}`}
+          onMouseEnter={() => setHeroHovered(true)}
+          onMouseLeave={() => setHeroHovered(false)}
+        >
           <div className="hero-copy">
             <div className="brand-lockup">
               <p className="brand-en">ENTANGLEMENT</p>
@@ -717,6 +1021,12 @@ export default function App() {
               <div className="intent-pill">像杂志封面一样克制</div>
               <div className="intent-pill">逐跳揭示，而非一次摊平</div>
             </div>
+
+            <div className="hero-deco" aria-hidden="true">
+              <div className="hero-deco-stage">
+                <canvas ref={heroDecoCanvasRef} className="hero-deco-canvas" />
+              </div>
+            </div>
           </div>
 
           <div className="hero-stage">
@@ -729,7 +1039,8 @@ export default function App() {
                 <button className="button secondary subtle" disabled={pairLoading} onClick={loadDailyPair}>
                   {pairLoading ? "拾取中..." : dailyPair ? "换一组今日推荐" : "获取今日推荐"}
                 </button>
-                <button className="button ghost subtle" type="button" onClick={loadPreviewExperience}>
+                <button className="button ghost subtle button-ghost-lit" type="button" onClick={loadPreviewExperience}>
+                  <span className="ghost-btn-icon" aria-hidden="true">✦</span>
                   先看示例路径
                 </button>
               </div>
@@ -786,13 +1097,6 @@ export default function App() {
                 <span className="button-label">{loading ? "正在纠缠" : "开始纠缠"}</span>
                 <span className="button-note">{loading ? activeLoadingState : "Reveal the hidden route"}</span>
                 <span className="button-breath" aria-hidden="true" />
-              </button>
-              <button
-                className="button secondary"
-                disabled={loading || !result}
-                onClick={() => void handleEntangle(true)}
-              >
-                换一条更妙的路径
               </button>
             </div>
 
