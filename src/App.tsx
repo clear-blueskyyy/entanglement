@@ -508,6 +508,9 @@ export default function App() {
       return;
     }
 
+    const canvasEl = canvas;
+    const renderCtx = ctx;
+
     const colors = ["#E5B76B", "#8CA8FF", "#E2E8F0"] as const;
     const dpr = window.devicePixelRatio || 1;
 
@@ -608,38 +611,38 @@ export default function App() {
         const alpha = Math.max(0.08, Math.min(0.52, this.scale * 0.65));
         const currentSize = Math.max(0.12, this.baseSize * this.scale);
 
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = this.color;
-        ctx.shadowBlur = 11 * this.scale;
-        ctx.shadowColor = this.color;
-        ctx.beginPath();
-        ctx.arc(this.screenX, this.screenY, currentSize, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
+        renderCtx.save();
+        renderCtx.globalAlpha = alpha;
+        renderCtx.fillStyle = this.color;
+        renderCtx.shadowBlur = 11 * this.scale;
+        renderCtx.shadowColor = this.color;
+        renderCtx.beginPath();
+        renderCtx.arc(this.screenX, this.screenY, currentSize, 0, Math.PI * 2);
+        renderCtx.fill();
+        renderCtx.restore();
       }
 
       drawOrbitLine() {
         const sampleCount = 72;
 
-        ctx.save();
-        ctx.globalAlpha = 0.22;
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.06)";
-        ctx.lineWidth = 0.75;
-        ctx.beginPath();
+        renderCtx.save();
+        renderCtx.globalAlpha = 0.22;
+        renderCtx.strokeStyle = "rgba(255, 255, 255, 0.06)";
+        renderCtx.lineWidth = 0.75;
+        renderCtx.beginPath();
 
         for (let i = 0; i <= sampleCount; i += 1) {
           const theta = (i / sampleCount) * Math.PI * 2;
           const point = this.projectPoint(theta);
           if (i === 0) {
-            ctx.moveTo(point.screenX, point.screenY);
+            renderCtx.moveTo(point.screenX, point.screenY);
           } else {
-            ctx.lineTo(point.screenX, point.screenY);
+            renderCtx.lineTo(point.screenX, point.screenY);
           }
         }
 
-        ctx.stroke();
-        ctx.restore();
+        renderCtx.stroke();
+        renderCtx.restore();
       }
     }
 
@@ -684,7 +687,7 @@ export default function App() {
     }
 
     function resizeCanvas() {
-      const parent = canvas.parentElement;
+      const parent = canvasEl.parentElement;
       if (!parent) {
         return;
       }
@@ -705,10 +708,10 @@ export default function App() {
       lastCanvasWidth = nextWidth;
       lastCanvasHeight = nextHeight;
 
-      canvas.width = Math.max(1, Math.floor(width * dpr));
-      canvas.height = Math.max(1, Math.floor(height * dpr));
+      canvasEl.width = Math.max(1, Math.floor(width * dpr));
+      canvasEl.height = Math.max(1, Math.floor(height * dpr));
 
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      renderCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       centerX = width * 0.53;
       centerY = height * 0.54;
@@ -717,8 +720,8 @@ export default function App() {
     }
 
     function animate() {
-      ctx.fillStyle = "rgba(5, 8, 20, 0.2)";
-      ctx.fillRect(0, 0, width, height);
+      renderCtx.fillStyle = "rgba(5, 8, 20, 0.2)";
+      renderCtx.fillRect(0, 0, width, height);
 
       for (const orbit of orbitConfigs) {
         orbit.axisAngle += orbit.axisSpeed;
