@@ -187,7 +187,7 @@ export function buildEntangleUserPrompt(
   ].join("\n");
 }
 
-export const ATTEMPT_TIMEOUTS_MS = [28_000, 24_000, 24_000] as const;
+export const ATTEMPT_TIMEOUTS_MS = [55_000, 50_000, 50_000] as const;
 
 export function buildAttempts(): AttemptConfig[] {
   return [

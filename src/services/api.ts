@@ -6,7 +6,7 @@ import type {
   EntanglementResult,
 } from "../types";
 
-const REQUEST_TIMEOUT_MS = 30_000;
+const REQUEST_TIMEOUT_MS = 60_000;
 
 function getApiBaseUrl() {
   if (!import.meta.env.DEV) {
