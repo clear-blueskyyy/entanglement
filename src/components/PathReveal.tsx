@@ -98,6 +98,7 @@ function drawWrappedText(
 export default function PathReveal({ result, onResetExperience }: PathRevealProps) {
   const [activePathIndex, setActivePathIndex] = useState(0);
   const [revealedCount, setRevealedCount] = useState(0);
+  const [finalEdgeRevealed, setFinalEdgeRevealed] = useState(false);
   const [selectedNodeIndex, setSelectedNodeIndex] = useState<number | null>(null);
   const [pulseIndex, setPulseIndex] = useState<number | null>(null);
   const [ceremonyActive, setCeremonyActive] = useState(false);
@@ -107,7 +108,7 @@ export default function PathReveal({ result, onResetExperience }: PathRevealProp
 
   const activePath = result.paths[activePathIndex];
   const totalMiddleCount = activePath?.nodes.length ?? 0;
-  const isComplete = totalMiddleCount > 0 && revealedCount >= totalMiddleCount;
+  const isComplete = totalMiddleCount > 0 && revealedCount >= totalMiddleCount && finalEdgeRevealed;
   const isRevealing = pulseIndex !== null;
 
   useEffect(() => {
@@ -118,6 +119,7 @@ export default function PathReveal({ result, onResetExperience }: PathRevealProp
 
     setActivePathIndex(0);
     setRevealedCount(0);
+    setFinalEdgeRevealed(false);
     setSelectedNodeIndex(null);
     setPulseIndex(null);
     setCeremonyActive(false);
@@ -130,6 +132,7 @@ export default function PathReveal({ result, onResetExperience }: PathRevealProp
     }
 
     setRevealedCount(0);
+    setFinalEdgeRevealed(false);
     setSelectedNodeIndex(null);
     setPulseIndex(null);
     setCeremonyActive(false);
@@ -165,7 +168,17 @@ export default function PathReveal({ result, onResetExperience }: PathRevealProp
   }
 
   function handleRevealNext() {
-    if (revealedCount >= totalMiddleCount || isRevealing) {
+    if (isRevealing) {
+      return;
+    }
+
+    // 第5次点击：所有中间节点已揭示，激活终点连线
+    if (revealedCount >= totalMiddleCount && !finalEdgeRevealed) {
+      setFinalEdgeRevealed(true);
+      return;
+    }
+
+    if (revealedCount >= totalMiddleCount) {
       return;
     }
 
@@ -191,6 +204,7 @@ export default function PathReveal({ result, onResetExperience }: PathRevealProp
     }
 
     setRevealedCount(0);
+    setFinalEdgeRevealed(false);
     setSelectedNodeIndex(null);
     setPulseIndex(null);
     setCeremonyActive(false);
@@ -324,20 +338,19 @@ export default function PathReveal({ result, onResetExperience }: PathRevealProp
           <div>
             <div className="section-kicker">Reveal Ritual</div>
             <h3 className="stage-title">每次只揭开一跳，让中间那条暗线慢慢长出来。</h3>
-            <p className="reveal-stage-note">
-              第一跳不再是占位引导句，而是直接把真正成立的转折递给你。
-            </p>
           </div>
           <div className="path-controls compact">
             <button
               type="button"
               className="button"
               onClick={handleRevealNext}
-              disabled={revealedCount >= totalMiddleCount || isRevealing}
+              disabled={isComplete || isRevealing}
             >
               {revealedCount < totalMiddleCount
                 ? `揭示下一跳（${revealedCount}/${totalMiddleCount}）`
-                : "整条路径已经点亮"}
+                : !finalEdgeRevealed
+                  ? "点亮终点连线"
+                  : "整条路径已经点亮"}
             </button>
 
             <button
@@ -399,7 +412,7 @@ export default function PathReveal({ result, onResetExperience }: PathRevealProp
               );
             })}
 
-            <div className={`constellation-edge ${isComplete ? "active" : ""}`}>
+            <div className={`constellation-edge ${finalEdgeRevealed ? "active" : ""}`}>
               <span className={`edge-line ${ceremonyActive ? "edge-line-ceremony" : ""}`} />
               <span className="edge-copy">
                 {activePath.nodes[activePath.nodes.length - 1]?.connectionToNext || "最后一跳把故事收回终点"}
