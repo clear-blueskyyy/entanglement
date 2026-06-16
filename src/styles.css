@@ -2025,16 +2025,41 @@ button {
 }
 
 @media (max-width: 899px) {
+  .app.has-result .card-hero {
+    transform: none;
+    opacity: 1;
+    gap: 20px;
+    padding: 24px;
+  }
+
   .constellation-shell {
     grid-template-columns: 1fr;
   }
 
-  .reveal-sidecar {
-    position: static;
-  }
-
+  .hero-stage-header,
+  .result-head,
+  .path-stage-head,
   .empty-state-header {
     flex-direction: column;
+  }
+
+  .hero-utility,
+  .path-controls.compact {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .hero-utility .button,
+  .path-controls .button {
+    flex: 1 1 100%;
+  }
+
+  .result-note {
+    max-width: none;
+  }
+
+  .reveal-sidecar {
+    position: static;
   }
 
   .pair-composer-shell {
@@ -2048,6 +2073,21 @@ button {
   .pair-sigil {
     justify-content: center;
     padding: 4px 0;
+  }
+
+  .constellation-node {
+    width: 100%;
+    max-width: 100%;
+    justify-content: center;
+  }
+
+  .node-text {
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+
+  .edge-copy {
+    max-width: min(100%, 300px);
   }
 
   .pair-composer-orbit-left,
@@ -2087,15 +2127,41 @@ button {
 
   .button.subtle,
   .button.ghost.subtle {
-    width: auto;
+    width: 100%;
   }
 
+    .hero-utility,
   .hero-actions,
   .path-controls,
   .finale-actions,
   .status-actions,
   .pair-guides {
     flex-direction: column;
+  }
+
+  .pair-input-shell {
+    gap: 10px;
+  }
+
+  .input-large {
+    min-height: 52px;
+  }
+
+  .constellation-node {
+    padding: 10px 14px;
+  }
+
+  .constellation-node-anchor .node-text {
+    font-size: 15px;
+  }
+
+  .constellation-node.middle .node-text {
+    font-size: 13px;
+  }
+
+  .edge-copy {
+    font-size: 11px;
+    padding: 5px 12px;
   }
 
   .path-controls.compact {
