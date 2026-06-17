@@ -95,6 +95,39 @@ function drawWrappedText(
   return startY + clippedLines.length * lineHeight;
 }
 
+// 将目标元素滚入视野，使用 ease-out-cubic（快速起步，柔和减速）
+// 点击时立即调用，不等动画结束，滚动与揭示动画同步发生
+function scrollSlotIntoView(el: HTMLElement) {
+  const rect = el.getBoundingClientRect();
+  const viewH = window.innerHeight;
+
+  // 已经舒适地在视野内（上下各留 100px 余白）则跳过
+  if (rect.top >= 100 && rect.bottom <= viewH - 100) return;
+
+  // 目标：把元素竖向居中，略偏上一点，留出下方节点的预览空间
+  const targetScrollY = Math.max(
+    0,
+    window.scrollY + rect.top - viewH * 0.45 + rect.height * 0.5
+  );
+  const startScrollY = window.scrollY;
+  const distance = targetScrollY - startScrollY;
+  if (Math.abs(distance) < 8) return;
+
+  const duration = 560;
+  let startTime: number | null = null;
+
+  function tick(now: number) {
+    if (startTime === null) startTime = now;
+    const t = Math.min((now - startTime) / duration, 1);
+    // ease-out-cubic: 1 - (1-t)^3
+    const ease = 1 - Math.pow(1 - t, 3);
+    window.scrollTo({ top: startScrollY + distance * ease, behavior: "auto" });
+    if (t < 1) window.requestAnimationFrame(tick);
+  }
+
+  window.requestAnimationFrame(tick);
+}
+
 export default function PathReveal({ result, onResetExperience }: PathRevealProps) {
   const [activePathIndex, setActivePathIndex] = useState(0);
   const [revealedCount, setRevealedCount] = useState(0);
@@ -105,6 +138,7 @@ export default function PathReveal({ result, onResetExperience }: PathRevealProp
   const [isExportingShare, setIsExportingShare] = useState(false);
   const [shareError, setShareError] = useState("");
   const revealTimerRef = useRef<number | null>(null);
+  const nodeSlotRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const activePath = result.paths[activePathIndex];
   const totalMiddleCount = activePath?.nodes.length ?? 0;
@@ -151,6 +185,7 @@ export default function PathReveal({ result, onResetExperience }: PathRevealProp
     setShareError("");
   }, [result.id, activePathIndex]);
 
+
   const selectedNode =
     selectedNodeIndex !== null ? activePath?.nodes[selectedNodeIndex] ?? null : null;
   const nextNode = activePath?.nodes[revealedCount] ?? null;
@@ -188,6 +223,11 @@ export default function PathReveal({ result, onResetExperience }: PathRevealProp
     }
 
     const nextIndex = revealedCount;
+
+    // 点击时立即开始滚动，与脉冲动画同步——不等 420ms 动画结束再滚
+    const slotEl = nodeSlotRefs.current[nextIndex];
+    if (slotEl) scrollSlotIntoView(slotEl);
+
     setPulseIndex(nextIndex);
     revealTimerRef.current = window.setTimeout(() => {
       setRevealedCount((count) => Math.min(count + 1, totalMiddleCount));
@@ -339,29 +379,6 @@ export default function PathReveal({ result, onResetExperience }: PathRevealProp
             <div className="section-kicker">Reveal Ritual</div>
             <h3 className="stage-title">每次只揭开一跳，让中间那条暗线慢慢长出来。</h3>
           </div>
-          <div className="path-controls compact">
-            <button
-              type="button"
-              className="button"
-              onClick={handleRevealNext}
-              disabled={isComplete || isRevealing}
-            >
-              {revealedCount < totalMiddleCount
-                ? `揭示下一跳（${revealedCount}/${totalMiddleCount}）`
-                : !finalEdgeRevealed
-                  ? "点亮终点连线"
-                  : "整条路径已经点亮"}
-            </button>
-
-            <button
-              type="button"
-              className="button secondary"
-              disabled={revealedCount === 0}
-              onClick={handleResetPath}
-            >
-              收起重看
-            </button>
-          </div>
         </div>
 
         <div className="constellation-shell">
@@ -377,7 +394,11 @@ export default function PathReveal({ result, onResetExperience }: PathRevealProp
               const pulsing = pulseIndex === index;
 
               return (
-                <div key={`${result.id}_slot_${index}`} className="constellation-slot">
+                <div
+                  key={`${result.id}_slot_${index}`}
+                  className="constellation-slot"
+                  ref={(el) => { nodeSlotRefs.current[index] = el; }}
+                >
                   <div className={`constellation-edge ${revealed || pulsing ? "active" : ""}`}>
                     <span className={`edge-line ${ceremonyActive ? "edge-line-ceremony" : ""}`} />
                     <span className={`edge-particle ${pulsing ? "traveling" : ""}`} />
@@ -426,6 +447,30 @@ export default function PathReveal({ result, onResetExperience }: PathRevealProp
           </div>
 
           <div className="reveal-sidecar">
+            {/* 桌面端浮动控制区（sidecar 已 sticky），移动端由底部浮动栏代替 */}
+            <div className="path-controls sidecar-controls">
+              <button
+                type="button"
+                className="button"
+                onClick={handleRevealNext}
+                disabled={isComplete || isRevealing}
+              >
+                {revealedCount < totalMiddleCount
+                  ? `揭示下一跳（${revealedCount}/${totalMiddleCount}）`
+                  : !finalEdgeRevealed
+                    ? "点亮终点连线"
+                    : "整条路径已经点亮"}
+              </button>
+              <button
+                type="button"
+                className="button secondary"
+                disabled={revealedCount === 0}
+                onClick={handleResetPath}
+              >
+                收起重看
+              </button>
+            </div>
+
             <article className="path-card reveal-card reveal-card-primary">
               <div className="insight-label">当前状态</div>
               {nextNode && !isComplete ? (
@@ -459,6 +504,30 @@ export default function PathReveal({ result, onResetExperience }: PathRevealProp
             )}
           </div>
         </div>
+      </div>
+
+      {/* 移动端底部浮动控制栏，桌面端隐藏 */}
+      <div className="reveal-float-bar">
+        <button
+          type="button"
+          className="button"
+          onClick={handleRevealNext}
+          disabled={isComplete || isRevealing}
+        >
+          {revealedCount < totalMiddleCount
+            ? `揭示下一跳（${revealedCount}/${totalMiddleCount}）`
+            : !finalEdgeRevealed
+              ? "点亮终点连线"
+              : "整条路径已经点亮"}
+        </button>
+        <button
+          type="button"
+          className="button secondary"
+          disabled={revealedCount === 0}
+          onClick={handleResetPath}
+        >
+          收起重看
+        </button>
       </div>
 
       {ceremonyActive ? (
