@@ -33,11 +33,11 @@ import { buildFallbackPaths, shouldFallbackToSafePath } from "./_lib/fallback.js
 async function generatePaths(termA: string, termB: string, regenerate: boolean) {
   let lastError: unknown = null;
 
-  const baseSystemPrompt = buildEntangleSystemPrompt();
-
   for (const attempt of buildAttempts()) {
+    // 系统 prompt 完全静态（不拼接轮次指令），轮次策略已合并进 buildEntangleUserPrompt 的 strategyRule
+    const systemPrompt = buildEntangleSystemPrompt(attempt.goodCaseIndices, attempt.badCaseIndices);
     const messages = [
-      { role: "system" as const, content: `${baseSystemPrompt}\n\n【本轮追加指令】\n${attempt.system}` },
+      { role: "system" as const, content: systemPrompt },
       {
         role: "user" as const,
         content: buildEntangleUserPrompt(termA, termB, regenerate, attempt.strategy),
