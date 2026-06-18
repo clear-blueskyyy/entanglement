@@ -40,10 +40,12 @@ try {
   const configuredProvider = process.env.FRIDAY_APP_ID
     ? `FRIDAY (model: ${process.env.FRIDAY_MODEL || "gpt-5.4"})`
     : process.env.OPENAI_API_KEY
-      ? `OpenAI (model: ${process.env.OPENAI_MODEL || "gpt-4o-mini"})`
-      : process.env.ZHIPU_API_KEY
-        ? `Zhipu (model: ${process.env.ZHIPU_MODEL || "glm-4-flash"})`
-        : "未配置";
+      ? `OpenAI (model: ${process.env.OPENAI_MODEL || "gpt-4o-mini"}, base: ${process.env.OPENAI_BASE_URL || "https://api.openai.com/v1"})`
+      : process.env.DEEPSEEK_API_KEY
+        ? `DeepSeek (model: ${process.env.DEEPSEEK_MODEL || "deepseek-v4-pro"}, base: ${process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com/v1"})`
+        : process.env.ZHIPU_API_KEY
+          ? `Zhipu (model: ${process.env.ZHIPU_MODEL || "glm-4-flash"})`
+          : "未配置（请在 .env 中配置至少一个 provider 的 key）";
   console.log("✅ .env 加载完成，当前 Provider:", configuredProvider);
 } catch {
   console.warn("⚠️  未找到 .env 文件，将使用系统环境变量");
@@ -55,9 +57,11 @@ const PORT = Number(process.env.LOCAL_API_PORT || 3001);
 
 const FRIDAY_BASE_URL = "https://aigc.sankuai.com/v1/openai/native";
 const OPENAI_BASE_URL = "https://api.openai.com/v1";
+const DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1";
 const ZHIPU_ENDPOINT = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
 const DEFAULT_FRIDAY_MODEL = "gpt-5.4";
 const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
+const DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-pro";
 const DEFAULT_ZHIPU_MODEL = "glm-4-flash";
 
 function normalizeBaseUrl(baseUrl) {
@@ -83,6 +87,16 @@ function getChatProviderConfig() {
       endpoint: `${baseUrl}/chat/completions`,
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${openaiApiKey}` },
       model: process.env.OPENAI_MODEL?.trim() || DEFAULT_OPENAI_MODEL,
+    };
+  }
+  const deepseekApiKey = process.env.DEEPSEEK_API_KEY?.trim();
+  if (deepseekApiKey) {
+    const baseUrl = normalizeBaseUrl(process.env.DEEPSEEK_BASE_URL?.trim() || DEEPSEEK_BASE_URL);
+    return {
+      provider: "deepseek",
+      endpoint: `${baseUrl}/chat/completions`,
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${deepseekApiKey}` },
+      model: process.env.DEEPSEEK_MODEL?.trim() || DEFAULT_DEEPSEEK_MODEL,
     };
   }
   const zhipuApiKey = process.env.ZHIPU_API_KEY?.trim();
@@ -547,7 +561,7 @@ const BAD_CASES = [
 "为什么坏：它只抓住收款更方便这个通用逻辑，既没收束到具体创作制度，也没收束到终点场景；换成别的跨境支付工具也差不多成立。",
 ];
 
-const MODEL_ATTEMPT_TIMEOUT_MS = [28_000, 24_000, 24_000];
+const MODEL_ATTEMPT_TIMEOUT_MS = [55_000, 50_000, 50_000];
 
 function buildStrategyInstruction(strategy) {
   if (strategy === "anti_generic") {

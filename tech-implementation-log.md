@@ -584,7 +584,7 @@
   3. `DEEPSEEK_API_KEY`
   4. `ZHIPU_API_KEY`
 - 继续保持 OpenAI 兼容请求格式：`POST {base}/chat/completions`
-- `local-server.mjs` 启动时会打印当前实际命中的提供方与模型，方便本地联调时一眼确认配置是否生效（注：启动日志的 provider 检测逻辑目前只检测 Friday、OpenAI、智谱三个 provider，未包含 DeepSeek。即使配置了 `DEEPSEEK_API_KEY`，启动日志也会显示"未配置"，但实际调用仍会路由到 DeepSeek）
+- `local-server.mjs` 启动时会打印当前实际命中的提供方与模型，方便本地联调时一眼确认配置是否生效（支持 Friday / OpenAI / DeepSeek / 智谱四个 provider，均可正确识别）
 
 **为什么这一步重要**：
 - 以前每次换模型，都像是在重做一遍接入；现在改成了“配置切换”，后续可以更低成本做 A/B 测试和临时降级

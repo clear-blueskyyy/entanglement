@@ -232,11 +232,9 @@ curl -I https://v2.doudou.design/
 | Vercel 函数执行上限 | `vercel.json` | `maxDuration` | 30s | 60s |
 | 服务端 fetch 超时 | `api/_lib/prompt/entangle.ts` | `ATTEMPT_TIMEOUTS_MS` | [28, 24, 24]s | [55, 50, 50]s |
 | 前端 fetch 超时 | `src/services/api.ts` | `REQUEST_TIMEOUT_MS` | 30s | 60s |
-| 本地开发服务器超时 | `local-server.mjs` | `MODEL_ATTEMPT_TIMEOUT_MS` | — | ⚠️ 仍为旧值 [28, 24, 24]s，与生产不同步 |
+| 本地开发服务器超时 | `local-server.mjs` | `MODEL_ATTEMPT_TIMEOUT_MS` | [28, 24, 24]s | [55, 50, 50]s |
 
-> ⚠️ **注意**：`local-server.mjs` 的 `MODEL_ATTEMPT_TIMEOUT_MS` 目前仍为旧值 `[28_000, 24_000, 24_000]`，尚未与生产环境 `[55_000, 50_000, 50_000]` 同步。本地调试时超时行为与生产不一致，如需对齐请手动修改该文件对应常量。
-
-**处理**：三处必须同步修改，缺一不可（本地开发若需对齐也需同步修改 `local-server.mjs`）。`vercel.json` 决定服务器最长跑多久；`ATTEMPT_TIMEOUTS_MS` 决定服务端每轮模型请求等多久；`REQUEST_TIMEOUT_MS` 决定浏览器等多久才放弃——前端超时比服务端短会导致服务器已有结果但浏览器先断开。
+**处理**：四处必须同步修改，缺一不可。`vercel.json` 决定服务器最长跑多久；`ATTEMPT_TIMEOUTS_MS` 决定服务端每轮模型请求等多久；`REQUEST_TIMEOUT_MS` 决定浏览器等多久才放弃——前端超时比服务端短会导致服务器已有结果但浏览器先断开。
 
 ### 7.6 更换 API Provider 后仍然超时
 

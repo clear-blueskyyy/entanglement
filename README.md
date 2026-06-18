@@ -252,7 +252,7 @@ OPENAI_MODEL    = deepseek-ai/DeepSeek-V3
 
 ### 6. `local-server.mjs` 是 TypeScript 源文件的手动镜像
 
-`local-server.mjs` 的文件注释明确说明它是"TypeScript api/ 目录的 JavaScript 镜像，用于本地测试"，修改任何逻辑时需同步更新对应的 TypeScript 源文件。注意：`local-server.mjs` 的 provider 检测逻辑目前只检查 Friday / OpenAI / 智谱三个，DeepSeek 尚未同步（TypeScript 源文件已支持四个）。
+`local-server.mjs` 的文件注释明确说明它是"TypeScript api/ 目录的 JavaScript 镜像，用于本地测试"，修改任何逻辑时需同步更新对应的 TypeScript 源文件。当前已与 TypeScript 源文件对齐，支持 Friday / OpenAI / DeepSeek / 智谱四个 provider。
 
 ### 7. 文档不是完全同一时期写的，要分清"哪个更新"
 
