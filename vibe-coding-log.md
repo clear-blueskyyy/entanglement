@@ -147,7 +147,7 @@
 **本轮补齐**：
 - 对齐了前后端输入约束：禁止相同词语、限制输入长度、非法 JSON 请求体返回 400
 - 强化了前端网络兜底：请求超时与网络异常给出明确提示，避免无反馈失败
-- 清理了环境变量模板：当前版本仅保留 `ZHIPU_API_KEY`，避免无效配置项干扰
+- 清理了环境变量模板：当时版本仅保留 `ZHIPU_API_KEY`，避免无效配置项干扰（注：此为早期状态，后续 Provider 扩展后 `.env.example` 已包含 Friday / OpenAI / DeepSeek / 智谱四个 provider）
 - 优化了服务端错误可读性：区分"未配置 Key / Key 格式错误 / 上游异常"三类情况
 - 修复了 `PathReveal.tsx` 中的 TypeScript 编译错误（`setSelectedNodeIndex` 回调类型问题）
 - 安装了本地 Node.js（v24 LTS via nvm）及项目依赖，解决了 `npm: command not found` 阻塞
@@ -155,7 +155,7 @@
 **当前状态（已全部就绪）**：
 - `npm run build` ✅ 构建成功，产物正常（JS 148KB，gzip 后 48KB）
 - `npm run dev` ✅ 开发服务器可启动
-- 唯一剩余操作：在 `.env` 中填入真实的 `ZHIPU_API_KEY`（格式 `id.secret`）
+- 唯一剩余操作：在 `.env` 中填入真实的 `ZHIPU_API_KEY`（格式 `id.secret`）（注：此为当时仅支持智谱时的状态，当前已支持 Friday / OpenAI / DeepSeek / 智谱四个 provider，配置任意一个即可运行）
 
 **经验教训**：
 > 一个项目"代码写完"和"本地能跑"之间常有一段距离。Node 环境、依赖安装、`.env` 配置是三道独立的门，每道门都可能是拦路虎。建议在项目收口 checklist 中把这三步显式列出来，不要假设环境已就绪。

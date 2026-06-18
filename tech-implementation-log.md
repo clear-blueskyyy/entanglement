@@ -91,7 +91,7 @@
 - `createZhipuToken(apiKey)`
 - 使用 `apiKey` 拆分 `id.secret`
 - HMAC-SHA256 签名生成短效 token（`exp`）
-- `callZhipuChat()` 统一调用 `glm-4-flash`
+- `callZhipuChat()` 是统一的模型调用入口，内部通过 `getChatProviderConfig()` 路由到当前配置的 provider（函数名保留了历史命名，实际支持 Friday / OpenAI / DeepSeek / 智谱四个 provider）
 
 ### 2.3 踩坑与结论
 
@@ -244,7 +244,7 @@
 ### 5.2 待做清单
 
 - [ ] 更稳定的限流（可迁移到 KV / Redis）
-- [ ] 前端缓存同词请求结果（减少重复调用）
+- [x] 前端缓存同词请求结果（减少重复调用）
 - [ ] 路径可视化支持“收起后回到上次展开位置”
 
 ### 5.3 本轮收口决策（阶段4暂缓）
@@ -267,7 +267,7 @@
    - 增加非法 JSON 请求体 400 返回
    - 增加 `date` 长度上限校验（32）
 3. `src/services/api.ts`
-   - 增加前端请求超时控制（AbortController，30s）
+   - 增加前端请求超时控制（AbortController，60s）
    - 增加网络异常提示与非 JSON 响应兜底
    - 错误消息统一从后端 `error.message` 字段透传，避免两套文案
 4. `src/App.tsx`
@@ -277,7 +277,7 @@
    - 修复 `setSelectedNodeIndex` 回调的 TypeScript 类型错误
    - 根因：`node.sourceIndex` 类型为 `number | undefined`，在 setter 回调内使用时类型窄化失败；解决方式为提前赋值给局部 `const sourceIndex`
 6. `.env.example`
-   - 移除当前未落地的 COZE 变量，保留唯一必填 `ZHIPU_API_KEY`
+   - 移除当前未落地的 COZE 变量，保留唯一必填 `ZHIPU_API_KEY`（注：此为当时状态，后续第 5.12 节迭代后 `.env.example` 已扩展为包含 Friday / OpenAI / DeepSeek / 智谱四个 provider）
 7. 本地环境（非代码改动）
    - 通过 nvm tarball 方式安装 Node.js v24.15.0、npm 11.12.1
    - 执行 `npm install` 安装项目依赖
@@ -286,7 +286,7 @@
 **收口验收结果**：
 - `tsc -b && vite build` ✅ 无报错
 - `npm run dev` ✅ 开发服务器正常启动
-- 待用户操作：`.env` 中填入真实 `ZHIPU_API_KEY` 即可运行完整链路
+- 待用户操作：`.env` 中填入真实 `ZHIPU_API_KEY` 即可运行完整链路（注：此为当时仅支持智谱时的状态，当前已支持 Friday / OpenAI / DeepSeek / 智谱四个 provider，配置任意一个即可运行）
 
 ### 5.5 后续建议
 
@@ -581,9 +581,10 @@
 - 统一 provider 选择逻辑，优先级变为：
   1. `FRIDAY_APP_ID`
   2. `OPENAI_API_KEY`
-  3. `ZHIPU_API_KEY`
+  3. `DEEPSEEK_API_KEY`
+  4. `ZHIPU_API_KEY`
 - 继续保持 OpenAI 兼容请求格式：`POST {base}/chat/completions`
-- `local-server.mjs` 启动时会打印当前实际命中的提供方与模型，方便本地联调时一眼确认配置是否生效
+- `local-server.mjs` 启动时会打印当前实际命中的提供方与模型，方便本地联调时一眼确认配置是否生效（注：启动日志的 provider 检测逻辑目前只检测 Friday、OpenAI、智谱三个 provider，未包含 DeepSeek。即使配置了 `DEEPSEEK_API_KEY`，启动日志也会显示"未配置"，但实际调用仍会路由到 DeepSeek）
 
 **为什么这一步重要**：
 - 以前每次换模型，都像是在重做一遍接入；现在改成了“配置切换”，后续可以更低成本做 A/B 测试和临时降级
@@ -596,7 +597,8 @@
 本轮处理：
 - `.env.example` 改成以 `FRIDAY_APP_ID` 为主配置，明确写出 `FRIDAY_BASE_URL` 与 `FRIDAY_MODEL`
 - 本地 `.env` 中移除了之前写入的 OpenAI 官方 key，避免继续混用外部额度与内部平台
-- 错误文案同步升级，从“未配置 OPENAI/ZHIPU”改成“未配置 FRIDAY_APP_ID、OPENAI_API_KEY 或 ZHIPU_API_KEY”
+- 错误文案同步升级，从”未配置 OPENAI/ZHIPU”改成”未配置 FRIDAY_APP_ID、OPENAI_API_KEY 或 ZHIPU_API_KEY”（注：DeepSeek provider 的加入晚于本次迭代，`local-server.mjs` 的错误文案尚未同步补充 `DEEPSEEK_API_KEY`）
+- 另：`api/entangle.ts` 面向用户的错误文案为”似乎还缺少一些必要的环境变量设置。别担心，您可以先点击 [示例路径] 进行体验”，与 `local-server.mjs` 的技术性文案不同
 
 **经验教训**：
 - 一旦 provider 策略变了，模板和错误提示必须一起改；否则后续排错时很容易被旧文案带偏
@@ -637,7 +639,7 @@
 3. **还没有主链路质量数据**  
    目前只拿到单点真实样本，尚无 `gpt-4.1` 下的 `primary_success_rate / fallback_rate / quality_pass_rate`。
 4. **命名债务开始显现**  
-   当前内部函数名仍保留 `callZhipuChat()` / `callZhipu()` 这类历史命名，虽然功能上已支持多 provider，但后续继续迭代时会增加理解负担。
+   当前内部函数名仍保留 `callZhipuChat()` / `callZhipu()` 这类历史命名，虽然功能上已支持多 provider，但后续继续迭代时会增加理解负担。注：`local-server.mjs` 中对应函数已命名为 `callLLM`（更中性），`api/_lib/llm.ts` 的导出函数仍为 `callZhipuChat`，两处命名不一致，是待统一的技术债务。
 
 #### 5.12.5 这轮之后，进一步解决思路应该怎么排
 
@@ -822,14 +824,16 @@
 
 #### 5.14.3 拆分后的文件行数对比
 
-| 文件 | 整理前 | 整理后 |
-|------|--------|--------|
-| `api/entangle.ts` | 769 行 | ~110 行 |
-| `api/_lib/prompt/entangle.ts` | 不存在 | ~140 行 |
-| `api/_lib/validate.ts` | 不存在 | ~200 行 |
-| `api/_lib/fallback.ts` | 不存在 | ~120 行 |
-| `api/_lib/llm.ts` | 213 行 | 213 行（不动） |
-| `local-server.mjs` | 856 行 | ~580 行（结构更清晰） |
+| 文件 | 整理前 | 整理后（拆分时初始值） | 当前实际行数 |
+|------|--------|----------------------|-------------|
+| `api/entangle.ts` | 769 行 | ~110 行 | 189 行 |
+| `api/_lib/prompt/entangle.ts` | 不存在 | ~140 行 | 242 行 |
+| `api/_lib/validate.ts` | 不存在 | ~200 行 | 428 行 |
+| `api/_lib/fallback.ts` | 不存在 | ~120 行 | 181 行 |
+| `api/_lib/llm.ts` | 213 行 | 213 行（不动） | 228 行 |
+| `local-server.mjs` | 856 行 | ~580 行（结构更清晰） | 834 行 |
+
+> 注：整理后行数为拆分时的初始值，后续因 prompt 调优等迭代已增长至"当前实际行数"列所示。
 
 #### 5.14.4 这次整理的关键原则
 

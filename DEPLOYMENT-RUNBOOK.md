@@ -51,16 +51,34 @@ npx vercel link --project taggling --scope doudou-projects --yes
 
 ## 3. 生产环境变量（部署前必须检查）
 
-后端模型 Provider 优先级来自 `api/_lib/llm.ts`：
+后端模型 Provider 优先级来自 `api/_lib/llm.ts`（检测到哪个 key 就用哪个）：
 
-1. `FRIDAY_APP_ID`
-2. `OPENAI_API_KEY`
-3. `ZHIPU_API_KEY`
+1. `FRIDAY_APP_ID`（美团内网，**公网 Vercel 节点不可达，生产不可用**）
+2. `OPENAI_API_KEY`（**当前生产环境实际使用**，可指向中转站）
+3. `DEEPSEEK_API_KEY`（DeepSeek 官方直连，Vercel 节点海外访问可能不稳定）
+4. `ZHIPU_API_KEY`（已验证超时严重，不推荐）
 
 ### 3.1 生产建议
 
-- 公网 Vercel 环境不要依赖 Friday 内网地址，推荐使用：`OPENAI_API_KEY` 或 `ZHIPU_API_KEY`
-- 至少保证一个可用 Key，否则 `/api/entangle` 可能返回 `E_PROVIDER_UNAVAILABLE`
+**当前生产方案（推荐）**：硅基流动（SiliconFlow）中转站路由到 DeepSeek V3，延迟稳定：
+
+```
+OPENAI_API_KEY  = <硅基流动的 Key>
+OPENAI_BASE_URL = https://api.siliconflow.cn/v1
+OPENAI_MODEL    = deepseek-ai/DeepSeek-V3
+```
+
+注册硅基流动：[https://cloud.siliconflow.cn](https://cloud.siliconflow.cn)
+
+若硅基流动不可用，可切换为 OpenAI 官方：
+
+```
+OPENAI_API_KEY  = <OpenAI 的 Key>
+# OPENAI_BASE_URL 不设则默认 https://api.openai.com/v1
+OPENAI_MODEL    = gpt-4o-mini
+```
+
+> ⚠️ 至少保证一个可用 Key，否则 `/api/entangle` 返回 `E_PROVIDER_UNAVAILABLE`
 
 ### 3.2 在 Vercel 控制台配置
 
@@ -68,10 +86,11 @@ npx vercel link --project taggling --scope doudou-projects --yes
 
 `https://vercel.com/doudou-projects/taggling/settings/environment-variables`
 
-至少配置以下之一：
+按 3.1 的推荐方案配置以下三个变量（三个都要填）：
 
-- `OPENAI_API_KEY`（可选 `OPENAI_MODEL`）
-- `ZHIPU_API_KEY`（可选 `ZHIPU_MODEL`）
+- `OPENAI_API_KEY`
+- `OPENAI_BASE_URL`
+- `OPENAI_MODEL`
 
 保存后必须重新部署一次，变量才会生效。
 
@@ -213,8 +232,11 @@ curl -I https://v2.doudou.design/
 | Vercel 函数执行上限 | `vercel.json` | `maxDuration` | 30s | 60s |
 | 服务端 fetch 超时 | `api/_lib/prompt/entangle.ts` | `ATTEMPT_TIMEOUTS_MS` | [28, 24, 24]s | [55, 50, 50]s |
 | 前端 fetch 超时 | `src/services/api.ts` | `REQUEST_TIMEOUT_MS` | 30s | 60s |
+| 本地开发服务器超时 | `local-server.mjs` | `MODEL_ATTEMPT_TIMEOUT_MS` | — | ⚠️ 仍为旧值 [28, 24, 24]s，与生产不同步 |
 
-**处理**：三处必须同步修改，缺一不可。`vercel.json` 决定服务器最长跑多久；`ATTEMPT_TIMEOUTS_MS` 决定服务端每轮模型请求等多久；`REQUEST_TIMEOUT_MS` 决定浏览器等多久才放弃——前端超时比服务端短会导致服务器已有结果但浏览器先断开。
+> ⚠️ **注意**：`local-server.mjs` 的 `MODEL_ATTEMPT_TIMEOUT_MS` 目前仍为旧值 `[28_000, 24_000, 24_000]`，尚未与生产环境 `[55_000, 50_000, 50_000]` 同步。本地调试时超时行为与生产不一致，如需对齐请手动修改该文件对应常量。
+
+**处理**：三处必须同步修改，缺一不可（本地开发若需对齐也需同步修改 `local-server.mjs`）。`vercel.json` 决定服务器最长跑多久；`ATTEMPT_TIMEOUTS_MS` 决定服务端每轮模型请求等多久；`REQUEST_TIMEOUT_MS` 决定浏览器等多久才放弃——前端超时比服务端短会导致服务器已有结果但浏览器先断开。
 
 ### 7.6 更换 API Provider 后仍然超时
 

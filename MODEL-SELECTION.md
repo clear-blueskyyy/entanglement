@@ -38,7 +38,7 @@
 |------|------|------|
 | 深度推理/因果链路能力 | ★★★★★ | 核心，决定路径是「硬骨架」还是「浅联想」，也决定能否通过 `validateResult()` 质量过滤 |
 | 中文写作质量 | ★★★★★ | hook/detail/summary 要有信息密度，不能是通顺废话 |
-| 延迟与稳定性 | ★★★★☆ | Vercel `maxDuration: 30s`，目标首次响应 15s 内，超时就走 fallback 保底路径 |
+| 延迟与稳定性 | ★★★★☆ | Vercel `maxDuration: 60s`，目标首次响应 30s 内，超时走服务端多轮重试（`ATTEMPT_TIMEOUTS_MS = [55, 50, 50]s`） |
 | JSON 输出合规 | ★★★☆☆ | 不能带 markdown 包裹，否则增加重试率；有 `extractJson()` 兜底但会消耗 token |
 | 成本 | ★★★☆☆ | 个人产品，质量优先，但不能离谱 |
 
@@ -122,17 +122,17 @@ LiveBench 是目前更新最频繁的防污染 benchmark，每 6 个月刷新题
 
 ### 3.3 延迟对比（Artificial Analysis，2026-06）
 
-| 模型 | 首 token 延迟（TTFT） | 输出速度（tokens/s） | 是否安全（30s timeout） |
+| 模型 | 首 token 延迟（TTFT） | 输出速度（tokens/s） | 是否安全（60s timeout） |
 |------|---------------------|-------------------|----------------------|
 | GPT-5.4 | ~3–15s | 60–70 | ✅ 安全 |
-| **Gemini 3.5 Flash** | **~18.5s** | **161** | **⚠️ 偏慢，TTFT 接近 20s** |
+| **Gemini 3.5 Flash** | **~18.5s** | **161** | **✅ 安全，但有跨境网络风险** |
 | GPT-5.4 mini | ~10s | 180 | ✅ 安全，速度快 |
 | MiniMax-M3 | ~3.7s | 59 | ✅ 安全 |
 | DeepSeek V4 Flash | ~1.4s | 99 | ✅ 最安全 |
 | DeepSeek V4 Pro | ~1.9s | 76 | ✅ 安全 |
 | Qwen3.7 Plus | ~2.3s | 53 | ✅ 安全 |
 
-> ⚠️ Gemini 3.5 Flash 的 TTFT 约 18.5s，距 Vercel 30s timeout 只剩 11.5s 缓冲，遇上网络波动极易超时触发 fallback，这是它最大的风险点。
+> ℹ️ Gemini 3.5 Flash 的 TTFT 约 18.5s，在 60s timeout（`vercel.json maxDuration: 60`）下有充足缓冲。真正的风险是 Vercel 公网节点访问 Google API 的跨境网络稳定性，而非延迟本身。
 
 ---
 
@@ -165,10 +165,10 @@ LiveBench 是目前更新最频繁的防污染 benchmark，每 6 个月刷新题
 
 **能力：** LiveBench 75.02，推理 82.00，语言 84.58——**语言分是所有候选中最高的**，综合能力强。  
 **中文：** Google 对中文语言能力持续投入，文案流畅度好，但对**中国本土场景**（如「深海采矿→韩国大选」「外卖骑手→自动驾驶」这类需要理解国内制度和产业结构的链路）理解深度不及国产模型。本项目有大量此类场景。  
-**延迟：⚠️ 这是 Gemini 的核心问题。** TTFT 约 18.5s，加上输出时间，总响应很容易逼近或超过 Vercel 30s timeout。Artificial Analysis 实测数据显示其延迟在同价位中垫底。一旦网络稍有波动，就会触发 fallback 保底路径，用户看到的是静态路径而非 AI 生成。  
+**延迟：** TTFT 约 18.5s，在当前 60s timeout（`vercel.json maxDuration: 60`）下有充足缓冲，Artificial Analysis 实测也在合理范围内。但真正的风险是 Vercel 公网节点（美东/新加坡）访问 Google API 的跨境网络不稳定——这与 DeepSeek 直连的跨境问题类似，需要通过中转解决。  
 **成本：** $1.31/$1.31，单次 ~¥0.035，与 GPT-5.4 mini 相当。  
 **接入：** 需改约 15 行代码，注册 Google AI Studio 账号。  
-**结论：** 能力优秀，但 TTFT 太高，对本项目 30s timeout 的架构是实质风险。**不推荐**，除非未来 Vercel timeout 放宽或 Gemini 延迟改善。
+**结论：** 能力优秀，TTFT 在 60s timeout 下安全。**不推荐**——核心障碍是跨境网络稳定性，除非通过 Google 专线或中转站解决。
 
 ---
 
@@ -215,8 +215,27 @@ LiveBench 是目前更新最频繁的防污染 benchmark，每 6 个月刷新题
 | 4 | DeepSeek V4 Flash | 🔶 极致省钱 | 能力与 GPT-5.4 mini 持平，成本仅其 1/9 |
 | 5 | Qwen3.7 Plus | 🔶 备选 | 中文语言分高，但改动成本与 DeepSeek 相同，综合不如 DeepSeek |
 | 6 | GPT-5.4 旗舰 | ⏳ 未来升级 | 质量天花板，现阶段成本溢价明显 |
-| ❌ | **Gemini 3.5 Flash** | ❌ 不推荐 | TTFT 18.5s，对 30s timeout 有实质超时风险 |
+| ❌ | **Gemini 3.5 Flash** | ❌ 不推荐 | 跨境网络不稳定（Vercel 节点访问 Google API），TTFT 本身在 60s timeout 下安全 |
 | ❌ | GLM-4-Flash | ❌ 不推荐 | 已验证超时严重，路径质量差 |
+
+---
+
+## 五点五、当前生产环境实际配置
+
+> 以下为截至文档更新时的线上实际配置，供参考。
+
+当前 [entanglement.doudou.design](https://entanglement.doudou.design) 使用**硅基流动（SiliconFlow）中转站**路由到 DeepSeek V3，通过 OpenAI provider 接入，零代码改动：
+
+```
+OPENAI_API_KEY  = <硅基流动的 Key>
+OPENAI_BASE_URL = https://api.siliconflow.cn/v1
+OPENAI_MODEL    = deepseek-ai/DeepSeek-V3
+```
+
+选择这个方案的原因：
+- DeepSeek V4 Pro 能力强（推理 82.69）、成本低（日均 100 次月费 ~¥39）
+- 硅基流动服务器在亚洲，对 Vercel 节点跨境延迟更友好
+- 利用现有 OpenAI provider 路由，只需配置 3 个环境变量，不改代码
 
 ---
 
@@ -253,4 +272,4 @@ LiveBench 是目前更新最频繁的防污染 benchmark，每 6 个月刷新题
 
 ## 七、一句话结论
 
-> **把 `OPENAI_MODEL` 改成 `gpt-5.4-mini`，零代码改动，立刻比现在更好。Gemini 延迟太高不要碰。MiniMax-M3 折扣期间值得试，但需要改代码。DeepSeek V4 Pro 是长期最优解，等你想改代码时切过去。**
+> **当前生产：硅基流动中转 DeepSeek V3（通过 OpenAI provider + OPENAI_BASE_URL 配置，零代码改动）。如需切换：把 `OPENAI_MODEL` 改成 `gpt-5.4-mini` 即可用 OpenAI 官方；Gemini 跨境网络不稳定不要碰（延迟本身在 60s timeout 下已安全）；MiniMax-M3 折扣期间值得试；DeepSeek V4 Pro 是长期最优解。**

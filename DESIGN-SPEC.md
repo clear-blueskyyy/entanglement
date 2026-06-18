@@ -59,7 +59,7 @@ background: radial-gradient(ellipse at 18% 15%, rgba(212,168,83,0.06), transpare
 **字号定义**:
 - 品牌名英文: `13px`, 字间距 `0.35em`
 - 品牌名中文: `clamp(2.6rem, 6vw, 4.2rem)`, 字重 700
-- 路线标题: `1.2rem`, 字重 700
+- 路线标题: `1.35rem`, 字重 700
 - 一级标题: `clamp(1.3rem, 2.4vw, 1.8rem)`
 - 二级标题: `14px`, 字重 600
 - 正文: `13-14px`, 行高 `1.75-1.8`
@@ -102,7 +102,7 @@ background: radial-gradient(ellipse at 18% 15%, rgba(212,168,83,0.06), transpare
 
 **交互规则**:
 - 首屏高度占满 viewport，左右两列在 900px+ 宽度时双列，以下单列
-- 星网背景持续缓动（`30s ease-in-out infinite`）
+- 星网背景各天体独立缓动（9–14s），星线连接动画 42s ease-in-out infinite
 - 所有输入框focus时边框变琥珀金，加发光阴影
 - 用户输入后，`[开始纠缠]` 按钮可用
 
@@ -112,16 +112,18 @@ background: radial-gradient(ellipse at 18% 15%, rgba(212,168,83,0.06), transpare
 
 ```css
 .app.has-result .card-hero {
-  transform: scale(0.92) translateY(-16px);
-  opacity: 0.35;
+  transform: scale(0.96) translateY(-10px);
+  opacity: 0.62;
   pointer-events: auto;
+  gap: 14px;
+  padding: 22px;
 }
 ```
 
 用户可以：
 - 滚动回顶修改输入词
 - 点击"换一条路径"重新生成
-- 结果页下方有"换一对试试"按钮可重置
+- 结果页下方有"换一对试试"按钮可重置（该按钮仅在收尾仪式完成后（所有节点揭示完毕）出现，非始终可见。）
 
 ### 3.3 Constellation 星座轨道（核心体验）
 
@@ -138,18 +140,20 @@ background: radial-gradient(ellipse at 18% 15%, rgba(212,168,83,0.06), transpare
   └─ 按钮文案更新为"揭示下一跳（1/4）"
 ```
 
+> 实际实现为**纵向**布局（`display: grid`，节点从上到下排列，连线为竖向 `edge-line`）
+
 **节点样式**:
 
 | 类型 | 边框色 | 背景 | 光晕 | 交互 |
 |------|--------|------|------|------|
 | start/end | 琥珀金 | 带渐变 | 24px shadow | 不可点击 |
-| middle (隐藏) | 淡银 dashed | 半透明 | 无 | 不可点击 |
+| middle (隐藏) | 琥珀金半透明 dashed（`rgba(212, 168, 83, 0.18)`，即 `var(--border-mid)`） | 半透明 | 无 | 不可点击 |
 | middle (已揭示) | 淡银 | 深色半透 | 无 | 可点击展开详情 |
 | middle (ceremony) | 琥珀金 | 带渐变 | 28px glow | 固定发光 |
 
 **连接线动效**:
-- 初始: `rgba(255,255,255,0.08)` 淡灰
-- 已激活: `linear-gradient(180deg, #d4a853, rgba(212,168,83,0.4))` 琥珀渐变 + glow
+- 初始: `linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.02))` 淡灰
+- 已激活: `linear-gradient(180deg, rgba(244,223,155,0.95), rgba(212,168,83,0.18))` 琥珀渐变 + glow
 - ceremony: 始终琥珀金亮起，加脉冲
 
 ### 3.4 路径元信息卡（Insight Cards）
@@ -157,7 +161,7 @@ background: radial-gradient(ellipse at 18% 15%, rgba(212,168,83,0.06), transpare
 ```
 ┌────────────────────────┐
 │ 路线标题               │
-│ 稀土回路              │ ← 字体: 宋体, 1.2rem, 700
+│ 稀土回路              │ ← 字体: 宋体, 1.35rem, 700
 │                        │
 │ 一句钩子，点出这条... │ ← 字体: 正文, 13px
 │                        │
@@ -182,7 +186,7 @@ background: radial-gradient(ellipse at 18% 15%, rgba(212,168,83,0.06), transpare
   ↓ 点击 [开始纠缠]
 [等待态]
   ↓ 加载动画 + loading hint 轮换
-  ↓ 3-8 秒
+  ↓ 通常 10-60 秒（取决于模型响应速度，前端超时上限 60s）
 [结果展开]
   ├─ 首屏缩小上移
   ├─ Constellation 轨道出现
@@ -203,6 +207,8 @@ background: radial-gradient(ellipse at 18% 15%, rgba(212,168,83,0.06), transpare
     ├─ 底部引导按钮出现
     └─ "再看一条路" / "换一对试试"
 ```
+
+**揭示下一跳按钮状态变化**：当所有中间节点揭示完毕但终点连线未点亮时，按钮变为"点亮终点连线"；终点连线点亮后变为"整条路径已经点亮"。
 
 ### 4.2 动效参数
 
@@ -248,20 +254,20 @@ background: radial-gradient(ellipse at 18% 15%, rgba(212,168,83,0.06), transpare
 ### 5.1 断点定义
 
 ```
-Desktop:  > 900px   // 双列 Hero（左 1.1fr，右 0.9fr）
-Tablet:   768-900px // 单列 Hero，constellation shell 保持双列
-Mobile:   < 640px   // 全单列，constellation shell 也单列
+Desktop:    > 900px   // 双列 Hero（左 1.1fr，右 0.9fr）
+非桌面（< 900px）：单列 Hero，constellation shell 单列
+Mobile:     < 640px   // 全单列，constellation shell 也单列
 ```
 
 ### 5.2 关键变化
 
-| 元素 | Desktop | Tablet | Mobile |
+| 元素 | Desktop | < 900px | Mobile |
 |------|---------|--------|--------|
 | Hero 布局 | grid 2列 | grid 1列 | grid 1列 |
-| 品牌名字号 | 4.2rem | 2.8rem | 2.2rem |
-| Constellation shell | 2列 | 2列 | 1列 |
+| 品牌名字号 | `clamp(2.6rem, 6vw, 4.2rem)` | `clamp(2rem, 8vw, 3rem)` | `clamp(1.8rem, 7vw, 2.4rem)` |
+| Constellation shell | 2列 | 1列 | 1列 |
 | 按钮宽度 | auto | auto | 100% |
-| 卡片 padding | 28px | 20px | 18px |
+| 卡片 padding | 28px | 20px | 16px |
 
 ---
 
@@ -269,7 +275,7 @@ Mobile:   < 640px   // 全单列，constellation shell 也单列
 
 ### 6.1 首屏
 
-- [ ] 星网背景清晰可见，8-12 个大星点 + 连线
+- [ ] 星网背景清晰可见，37 个星点 + 39 条连线 + 6 个轨道天体（`.orbit-body`）
 - [ ] 品牌锁定（英文+中文+标语）排版整洁，字间距适度
 - [ ] 两个输入框并排（Desktop）或上下（Mobile），`↔` 符号居中
 - [ ] `[开始纠缠]` 琥珀金按钮清晰可点
@@ -294,7 +300,8 @@ Mobile:   < 640px   // 全单列，constellation shell 也单列
 
 - [ ] 所有节点同时发光脉冲
 - [ ] 路径概览卡淡入
-- [ ] 引导按钮（"再看一条路" / "换一对试试"）可点
+- [ ] 引导按钮可点：多路径时"再看一条路"、始终有"换一对试试"
+- [ ] 下载分享卡片按钮可用（Canvas 生成 1200×630 PNG 并下载）
 
 ### 6.5 性能
 
@@ -369,6 +376,20 @@ Mobile:   < 640px   // 全单列，constellation shell 也单列
 - 给了用户对路径质量的直观认知
 - 鼓励用户尝试不同路线：7分 vs 9分有显著区别
 - AI 生成时的质量评估有了量化反馈
+
+---
+
+## 附录：已实现但文档未覆盖的功能
+
+以下功能已在代码中完整实现，文档尚未覆盖，供参考：
+
+- **"先看示例路径"按钮**：Hero 区 ghost 按钮（带 ✦ 图标和脉冲动画），点击直接加载预置 `previewResult` 体验完整流程
+- **结果质量提示**：检测到通用桥接词或低惊喜度路径时，状态栏显示提示，可点击"换一条更妙的路径"重试
+- **缓存命中提示**：命中 localStorage 缓存时显示"已直接打开你最近一次生成过的路径"
+- **"收起重看"按钮**：揭示过程中可重置路径到初始状态
+- **路径 Tab 切换**（`path-tabs`）：多路径时顶部标签页切换
+- **Hero 装饰 Canvas**：桌面端（≥900px）左侧品牌区下方的 3D 行星轨道动画（`.hero-deco-canvas`）
+- **下载分享卡片**：收尾区域 Canvas 生成 1200×630 PNG 并下载
 
 ---
 
