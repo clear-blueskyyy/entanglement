@@ -234,7 +234,7 @@ OPENAI_MODEL    = deepseek-ai/DeepSeek-V3
 
 ### 4. 校验逻辑在 `api/_lib/validate.ts`，不在 `api/entangle.ts`
 
-- `api/_lib/validate.ts` 中 `validateResult()` 硬性校验：`paths.length` 必须在 **1-3** 之间，每条路径的 `nodes.length` 必须在 **3-5** 之间
+- `api/_lib/validate.ts` 中 `validateResult()` 硬性校验：`paths.length` 必须等于 **1**，每条路径的 `nodes.length` 必须等于 **3**
 - `api/entangle.ts` 只做 HTTP 路由和参数校验（`termA`/`termB` 非空、不相同、不超过 32 字符）
 - Prompt 文本（包含好例/坏例、三轮策略）完全在 `api/_lib/prompt/entangle.ts`
 - Fallback 路径完全在 `api/_lib/fallback.ts`
@@ -417,7 +417,7 @@ interface NormalizedPath {
   hook: string;
   surprise: string;
   surpriseIndex: number;   // 1-10 整数
-  nodes: NormalizedNode[]; // 3-5 个节点
+  nodes: NormalizedNode[]; // 固定 3 个节点
   summary: string;
 }
 
@@ -432,8 +432,8 @@ interface NormalizedNode {
 
 | 轮次 | 策略 | 目标路径数 | 超时 |
 |------|------|-----------|------|
-| 1 | `balanced` | 1-3 条，优先 2 条 | 55 秒 |
-| 2 | `anti_generic` | 1-2 条 | 50 秒 |
+| 1 | `balanced` | 1 条 | 55 秒 |
+| 2 | `anti_generic` | 1 条（修复泛化） | 50 秒 |
 | 3 | `single_path` | 1 条高置信路径 | 50 秒 |
 
 #### `POST /api/daily-pair`
