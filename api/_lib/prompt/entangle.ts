@@ -87,12 +87,12 @@ export const BAD_CASES = [
 
 function buildStrategyInstruction(strategy: EntangleStrategy): string {
   if (strategy === "anti_generic") {
-    return "本轮重点修复泛化，输出 1-2 条即可。删掉万能桥接词、鸡汤总结、流水账式硬中介堆砌；优先删掉换成同类词也成立的路线，宁可少，不要凑。";
+    return "本轮重点修复泛化，只输出 1 条。删掉万能桥接词、鸡汤总结、流水账式硬中介堆砌；换成同类词也成立的路线直接推翻重来，宁缺毋滥。";
   }
   if (strategy === "single_path") {
     return "本轮只输出 1 条高置信路径，逐跳自检 connectionToNext、detail、summary 是否真的具体，不要空话。先选最成立的妙感类型和唯一枢纽节点，让起点与终点都被收住。";
   }
-  return "本轮输出 1-3 条路径，优先 2 条。先选最合适的妙感类型和枢纽节点，再向两端延展。若输出多条，尽量采用不同的妙感类型，优先让起点与终点都被同一条现实链路收住。";
+  return "本轮只输出 1 条路径。先确定最合适的妙感类型和枢纽节点，再向两端延展，优先让起点与终点都被同一条现实链路收住。";
 }
 
 function buildBaseSystemPrompt(
@@ -156,7 +156,7 @@ function buildBaseSystemPrompt(
     "【Good Cases】",
     ...selectedGoodCases,
     "",
-    "【输出格式】nodes 数组必须恰好包含 3 个节点：",
+    "【输出格式】paths 数组恰好包含 1 个路径对象，nodes 数组恰好包含 3 个节点：",
     '{"paths":[{"title":"4-10字标题","hook":"一句钩子，说明这条路线从哪里拐过去，并回扣起点与终点","surprise":"一句话指出最妙的意外点，并回扣起点与终点","surpriseIndex":8,"nodes":[{"term":"节点1","connectionToNext":"这一跳为何会把故事推向下一跳，要写具体机制","detail":"这个节点为何关键，要写现实信息"},{"term":"节点2","connectionToNext":"这一跳为何会把故事推向下一跳，要写具体机制","detail":"这个节点为何关键，要写现实信息"},{"term":"节点3","connectionToNext":"这一跳为何会把故事推向下一跳，要写具体机制","detail":"这个节点为何关键，要写现实信息"}],"summary":"40-100字，总结这条路径真正妙在哪里，并明确点回起点与终点"}]}',
     "全部输出必须是中文，且只能输出合法 JSON。不要输出 markdown、解释、注释或前后缀。",
   ].join("\n");
@@ -204,12 +204,10 @@ export function buildEntangleUserPrompt(
     "【本轮要求】",
     strategyRule,
     regenerateRule,
-    "不要先在脑中铺很多候选再裁切；直接给出你最成立的 1-3 条路径。",
-    "每条路径都先确定妙感类型和枢纽节点，再向两端延展。",
+    "不要先在脑中铺很多候选再裁切；直接给出你最成立的 1 条路径。",
+    "先确定妙感类型和枢纽节点，再向两端延展。",
     "优先选择能让起点与终点都留下现实痕迹的链路，不要只抓一个通用载体就往另一端硬跳。",
-    "如果输出多条，尽量让妙感类型不同；除非你只对 1 条有把握。",
     "硬中介可以使用，但只是现实锚点参考，不是默认答案。",
-    "拿不准时减少条数，不要凑数。",
   ].join("\n");
 }
 

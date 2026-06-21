@@ -401,8 +401,8 @@ export function validateResult(
 
   const result = input as Record<string, unknown>;
   const paths = result.paths;
-  if (!Array.isArray(paths) || paths.length === 0 || paths.length > 3) {
-    throw new Error("paths must be 1-3");
+  if (!Array.isArray(paths) || paths.length !== 1) {
+    throw new Error("paths must be 1");
   }
 
   const normalizedPaths: NormalizedPath[] = paths.map((path) => normalizeOnePath(path, termA, termB));
@@ -453,7 +453,7 @@ export function isInvalidModelOutputError(error: unknown): boolean {
     message.includes("path quality too weak") ||
     message.includes("generic node") ||
     message.includes("unexpected token") ||
-    message.includes("paths must") ||
+    message.includes("paths must be") ||
     message.includes("path invalid") ||
     message.includes("node invalid")
   );
