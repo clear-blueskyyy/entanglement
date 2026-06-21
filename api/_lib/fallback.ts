@@ -55,6 +55,15 @@ const DOMAIN_FALLBACK_NODES: Record<string, Array<{ term: string; detail: string
   ],
 };
 
+/** 用于生成 connectionFromStart（起点→第一个中间节点的连接描述） */
+const DYNAMIC_FIRST_CONNECTION_TEMPLATES = [
+  "{start}一旦被纳入{node}的运转逻辑，两者之间的依赖关系就很难再切断。",
+  "{start}在规模化的过程中，必须通过{node}这个真实的制度或产业关口。",
+  "要理解{start}的现实约束，必须先看它在{node}层面是怎样被锁定的。",
+  "{start}的每一次扩张，都需要{node}作为资源或许可的中介节点。",
+  "{node}是{start}进入下一层级时绕不开的实体门槛。",
+];
+
 const DYNAMIC_CONNECTION_TEMPLATES = [
   "围绕{start}的讨论一旦进入{node}层面，关注点会从现象转向更可执行的现实约束。",
   "{node}会改变资源与注意力的分配方式，让链路继续向{end}靠近。",
@@ -150,12 +159,20 @@ export function buildFallbackPaths(
     detail: candidate.detail,
   }));
 
+  const firstNode = pickedArray[0];
+  const connectionFromStart = DYNAMIC_FIRST_CONNECTION_TEMPLATES[
+    (startIndex) % DYNAMIC_FIRST_CONNECTION_TEMPLATES.length
+  ]
+    .replace(/{start}/g, termA)
+    .replace(/{node}/g, firstNode ? firstNode.term : "中间节点");
+
   return [
     {
       title: regenerate ? "低优先保底线" : "应急保底线",
       hook: `这不是优先结果，而是在真实生成完全失败时，临时用具体机制把 ${termA} 与 ${termB} 托住。`,
       surprise: `真正应该优化的不是这条保底线，而是让 ${termA} 到 ${termB} 的真实路径稳定产出。`,
       surpriseIndex: 5,
+      connectionFromStart,
       nodes,
       summary: `只有在明确开启保底模式后，这条路径才会作为应急结果返回；默认应继续争取真实生成，而不是用模板遮住失败。`,
     },

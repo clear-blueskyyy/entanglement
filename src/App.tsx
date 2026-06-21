@@ -217,7 +217,7 @@ const previewResult: EntanglementResult = {
   ],
 };
 
-const ENTANGLE_CACHE_STORAGE_KEY = "entanglement:result-cache:v1";
+const ENTANGLE_CACHE_STORAGE_KEY = "entanglement:result-cache:v2";
 const ENTANGLE_CACHE_LIMIT = 12;
 const ENTANGLE_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 

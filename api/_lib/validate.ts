@@ -21,6 +21,7 @@ export type NormalizedPath = {
   hook: string;
   surprise: string;
   surpriseIndex: number;
+  connectionFromStart: string;
   nodes: NormalizedNode[];
   summary: string;
 };
@@ -323,11 +324,15 @@ function normalizeOnePath(
   const hook = normalizeText(record.hook);
   const surprise = normalizeText(record.surprise);
   const summary = normalizeText(record.summary);
+  const connectionFromStart = normalizeText(record.connectionFromStart);
   const surpriseIndex = Number(record.surpriseIndex ?? 0);
   const nodes = record.nodes;
 
-  if (!title || !hook || !surprise || !summary) {
+  if (!title || !hook || !surprise || !summary || !connectionFromStart) {
     throw new Error("path meta missing");
+  }
+  if (connectionFromStart.length < MIN_CONNECTION_LENGTH) {
+    throw new Error("connection from start too short");
   }
   if (title.length < MIN_TITLE_LENGTH) {
     throw new Error("title too short");
@@ -379,7 +384,7 @@ function normalizeOnePath(
     return { term, connectionToNext, detail };
   });
 
-  return { title, hook, surprise, surpriseIndex, nodes: normalizedNodes, summary };
+  return { title, hook, surprise, surpriseIndex, connectionFromStart, nodes: normalizedNodes, summary };
 }
 
 // ─── 主校验函数 ───────────────────────────────────────────────────────────────
@@ -448,6 +453,7 @@ export function isInvalidModelOutputError(error: unknown): boolean {
     message.includes("duplicate node") ||
     message.includes("node term length invalid") ||
     message.includes("connection too short") ||
+    message.includes("connection from start too short") ||
     message.includes("node detail too short") ||
     message.includes("node fields missing") ||
     message.includes("path quality too weak") ||

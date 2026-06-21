@@ -9,6 +9,7 @@ export interface EntanglementPath {
   hook: string;
   surprise: string;
   surpriseIndex: number;
+  connectionFromStart: string;
   nodes: EntanglementPathNode[];
   summary: string;
 }

@@ -402,7 +402,11 @@ export default function PathReveal({ result, onResetExperience }: PathRevealProp
                   <div className={`constellation-edge ${revealed || pulsing ? "active" : ""}`}>
                     <span className={`edge-line ${ceremonyActive ? "edge-line-ceremony" : ""}`} />
                     <span className={`edge-particle ${pulsing ? "traveling" : ""}`} />
-                    <span className="edge-copy">{node.connectionToNext}</span>
+                    <span className="edge-copy">
+                      {index === 0
+                        ? activePath.connectionFromStart
+                        : activePath.nodes[index - 1].connectionToNext}
+                    </span>
                   </div>
 
                   {revealed ? (
