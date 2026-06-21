@@ -2,6 +2,7 @@ import type {
   ApiErrorPayload,
   ApiSuccessPayload,
   DailyPairResult,
+  EntanglementPath,
   EntangleRequest,
   EntanglementResult,
 } from "../types";
@@ -172,4 +173,128 @@ export async function getDailyPair(date?: string): Promise<ApiSuccessPayload<Dai
   });
 
   return parseResponse<ApiSuccessPayload<DailyPairResult>>(response);
+}
+
+// ─── 流式接口 ─────────────────────────────────────────────────────────────────
+
+type StreamCallbacks = {
+  onPath: (path: EntanglementPath) => void;
+  onDone: (requestId: string) => void;
+  onError: (err: ApiRequestError) => void;
+};
+
+/**
+ * 流式纠缠请求。
+ * 服务端以 SSE 逐条返回 path，第一条 path 到达时立即触发 onPath。
+ * 返回取消函数——调用后中断 fetch，不再触发任何回调。
+ */
+export function createEntanglementStream(
+  payload: EntangleRequest,
+  { onPath, onDone, onError }: StreamCallbacks
+): () => void {
+  const controller = new AbortController();
+
+  async function run() {
+    let response: Response;
+    try {
+      response = await fetch(buildApiUrl("/api/entangle"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
+      onError(new ApiRequestError("网络异常，请检查连接后重试。", { code: "E_NETWORK", retryable: true }));
+      return;
+    }
+
+    // 非 200 且非 SSE：尝试解析 JSON 错误体
+    if (!response.ok) {
+      try {
+        const json = (await response.json()) as Record<string, unknown>;
+        if (isApiError(json)) {
+          onError(new ApiRequestError(json.error.message, {
+            code: json.error.code,
+            retryable: json.error.retryable,
+            status: response.status,
+            requestId: json.requestId,
+          }));
+          return;
+        }
+      } catch { /* ignore */ }
+      onError(new ApiRequestError(`请求失败（${response.status}），请稍后重试。`, {
+        status: response.status,
+        retryable: response.status >= 500,
+      }));
+      return;
+    }
+
+    if (!response.body) {
+      onError(new ApiRequestError("服务响应为空，请稍后重试。", { code: "E_RESPONSE_FORMAT", retryable: true }));
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let lineBuffer = "";
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        lineBuffer += decoder.decode(value, { stream: true });
+        const lines = lineBuffer.split("\n");
+        lineBuffer = lines.pop() ?? "";
+
+        let i = 0;
+        while (i < lines.length) {
+          const line = lines[i].trim();
+
+          if (line.startsWith("event: ")) {
+            const eventName = line.slice(7);
+            const dataLine = lines[i + 1]?.trim() ?? "";
+            const rawData = dataLine.startsWith("data: ") ? dataLine.slice(6) : "";
+            i += 2; // 跳过 event 行 + data 行
+
+            if (!rawData) continue;
+
+            try {
+              const data = JSON.parse(rawData) as Record<string, unknown>;
+
+              if (eventName === "path") {
+                onPath(data as unknown as EntanglementPath);
+              } else if (eventName === "done") {
+                onDone(String(data.requestId ?? ""));
+              } else if (eventName === "error") {
+                onError(new ApiRequestError(
+                  String(data.message ?? "请求失败"),
+                  {
+                    code: (data.code as ApiRequestError["code"]) ?? undefined,
+                    retryable: Boolean(data.retryable ?? true),
+                  }
+                ));
+              }
+            } catch {
+              // 忽略格式异常的单条 SSE 数据
+            }
+          } else {
+            i++;
+          }
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
+      onError(new ApiRequestError("连接中断，请稍后重试。", { code: "E_NETWORK", retryable: true }));
+    } finally {
+      reader.releaseLock();
+    }
+  }
+
+  run();
+  return () => controller.abort();
 }

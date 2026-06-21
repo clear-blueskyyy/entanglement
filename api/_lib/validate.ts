@@ -283,6 +283,105 @@ export function collectPathIssues(
   return issues;
 }
 
+// ─── 单条路径校验（供流式路径直接调用） ───────────────────────────────────────
+
+/**
+ * 校验并标准化单条路径对象（供流式路径直接调用）。
+ * - 结构校验失败：直接抛出 Error
+ * - 质量过滤：issues >= 2 时抛出 Error
+ * 通过则返回 NormalizedPath。
+ */
+export function validateSinglePath(
+  path: unknown,
+  termA: string,
+  termB: string
+): NormalizedPath {
+  // 结构校验（复用 normalizeOnePath，定义在下方）
+  const normalized = normalizeOnePath(path, termA, termB);
+
+  // 质量过滤：流式路径不能靠多条路径兜底，直接 throw
+  if (collectPathIssues(normalized, termA, termB).length >= 2) {
+    throw new Error("path quality too weak");
+  }
+
+  return normalized;
+}
+
+// ─── 结构校验（不含质量过滤，供 validateResult 内部使用） ─────────────────────
+
+function normalizeOnePath(
+  path: unknown,
+  termA: string,
+  termB: string
+): NormalizedPath {
+  if (typeof path !== "object" || path === null) {
+    throw new Error("path invalid");
+  }
+
+  const record = path as Record<string, unknown>;
+  const title = normalizeText(record.title);
+  const hook = normalizeText(record.hook);
+  const surprise = normalizeText(record.surprise);
+  const summary = normalizeText(record.summary);
+  const surpriseIndex = Number(record.surpriseIndex ?? 0);
+  const nodes = record.nodes;
+
+  if (!title || !hook || !surprise || !summary) {
+    throw new Error("path meta missing");
+  }
+  if (title.length < MIN_TITLE_LENGTH) {
+    throw new Error("title too short");
+  }
+  if (surprise.length < MIN_SURPRISE_LENGTH) {
+    throw new Error("surprise too short");
+  }
+  if (hook.length < MIN_HOOK_LENGTH || summary.length < MIN_SUMMARY_LENGTH) {
+    throw new Error("path copy too short");
+  }
+  if (!Number.isInteger(surpriseIndex) || surpriseIndex < 1 || surpriseIndex > 10) {
+    throw new Error("surprise index invalid");
+  }
+  if (!Array.isArray(nodes) || nodes.length !== 3) {
+    throw new Error("node count must be 3");
+  }
+
+  const seenTerms = new Set<string>();
+  const normalizedNodes: NormalizedNode[] = nodes.map((node) => {
+    if (typeof node !== "object" || node === null) {
+      throw new Error("node invalid");
+    }
+
+    const current = node as Record<string, unknown>;
+    const term = normalizeText(current.term);
+    const connectionToNext = normalizeText(current.connectionToNext);
+    const detail = normalizeText(current.detail);
+
+    if (!term || !connectionToNext || !detail) {
+      throw new Error("node fields missing");
+    }
+    if (term.length < NODE_TERM_MIN_LENGTH || term.length > NODE_TERM_MAX_LENGTH) {
+      throw new Error("node term length invalid");
+    }
+    if (connectionToNext.length < MIN_CONNECTION_LENGTH) {
+      throw new Error("connection too short");
+    }
+    if (detail.length < MIN_DETAIL_LENGTH) {
+      throw new Error("node detail too short");
+    }
+    if (isForbiddenBridge(term, termA, termB)) {
+      throw new Error("forbidden bridge node");
+    }
+    if (seenTerms.has(term)) {
+      throw new Error("duplicate node");
+    }
+
+    seenTerms.add(term);
+    return { term, connectionToNext, detail };
+  });
+
+  return { title, hook, surprise, surpriseIndex, nodes: normalizedNodes, summary };
+}
+
 // ─── 主校验函数 ───────────────────────────────────────────────────────────────
 
 /**
@@ -306,74 +405,7 @@ export function validateResult(
     throw new Error("paths must be 1-3");
   }
 
-  const normalizedPaths: NormalizedPath[] = paths.map((path) => {
-    if (typeof path !== "object" || path === null) {
-      throw new Error("path invalid");
-    }
-
-    const record = path as Record<string, unknown>;
-    const title = normalizeText(record.title);
-    const hook = normalizeText(record.hook);
-    const surprise = normalizeText(record.surprise);
-    const summary = normalizeText(record.summary);
-    const surpriseIndex = Number(record.surpriseIndex ?? 0);
-    const nodes = record.nodes;
-
-    if (!title || !hook || !surprise || !summary) {
-      throw new Error("path meta missing");
-    }
-    if (title.length < MIN_TITLE_LENGTH) {
-      throw new Error("title too short");
-    }
-    if (surprise.length < MIN_SURPRISE_LENGTH) {
-      throw new Error("surprise too short");
-    }
-    if (hook.length < MIN_HOOK_LENGTH || summary.length < MIN_SUMMARY_LENGTH) {
-      throw new Error("path copy too short");
-    }
-    if (!Number.isInteger(surpriseIndex) || surpriseIndex < 1 || surpriseIndex > 10) {
-      throw new Error("surprise index invalid");
-    }
-    if (!Array.isArray(nodes) || nodes.length < 3 || nodes.length > 5) {
-      throw new Error("node count must be 3-5");
-    }
-
-    const seenTerms = new Set<string>();
-    const normalizedNodes: NormalizedNode[] = nodes.map((node) => {
-      if (typeof node !== "object" || node === null) {
-        throw new Error("node invalid");
-      }
-
-      const current = node as Record<string, unknown>;
-      const term = normalizeText(current.term);
-      const connectionToNext = normalizeText(current.connectionToNext);
-      const detail = normalizeText(current.detail);
-
-      if (!term || !connectionToNext || !detail) {
-        throw new Error("node fields missing");
-      }
-      if (term.length < NODE_TERM_MIN_LENGTH || term.length > NODE_TERM_MAX_LENGTH) {
-        throw new Error("node term length invalid");
-      }
-      if (connectionToNext.length < MIN_CONNECTION_LENGTH) {
-        throw new Error("connection too short");
-      }
-      if (detail.length < MIN_DETAIL_LENGTH) {
-        throw new Error("node detail too short");
-      }
-      if (isForbiddenBridge(term, termA, termB)) {
-        throw new Error("forbidden bridge node");
-      }
-      if (seenTerms.has(term)) {
-        throw new Error("duplicate node");
-      }
-
-      seenTerms.add(term);
-      return { term, connectionToNext, detail };
-    });
-
-    return { title, hook, surprise, surpriseIndex, nodes: normalizedNodes, summary };
-  });
+  const normalizedPaths: NormalizedPath[] = paths.map((path) => normalizeOnePath(path, termA, termB));
 
   const filteredPaths = normalizedPaths.filter(
     (path) => collectPathIssues(path, termA, termB).length < 2

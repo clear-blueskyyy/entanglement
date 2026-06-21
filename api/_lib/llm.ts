@@ -6,7 +6,7 @@ const DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1";
 const ZHIPU_ENDPOINT = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
 const DEFAULT_FRIDAY_MODEL = "gpt-5.4";
 const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
-const DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-pro";
+const DEFAULT_DEEPSEEK_MODEL = "deepseek-chat";
 const DEFAULT_ZHIPU_MODEL = "glm-4-flash";
 
 export type ChatMessage = {
@@ -151,6 +151,70 @@ function createZhipuToken(apiKey: string) {
     .digest("base64url");
 
   return `${tokenData}.${signature}`;
+}
+
+export async function* callZhipuChatStream(
+  messages: ChatMessage[],
+  timeoutMs = 25000
+): AsyncGenerator<string> {
+  const provider = getChatProviderConfig();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(provider.endpoint, {
+      method: "POST",
+      headers: provider.headers,
+      body: JSON.stringify({
+        model: provider.model,
+        temperature: 0.75,
+        messages,
+        stream: true,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const detail = (await response.text()).slice(0, 300);
+      throw new Error(`provider status ${response.status}${detail ? `: ${detail}` : ""}`);
+    }
+
+    if (!response.body) {
+      throw new Error("empty response body");
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let lineBuffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      lineBuffer += decoder.decode(value, { stream: true });
+      const lines = lineBuffer.split("\n");
+      lineBuffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith("data: ")) continue;
+        const data = trimmed.slice(6);
+        if (data === "[DONE]") return;
+
+        try {
+          const parsed = JSON.parse(data) as Record<string, any>;
+          const content = parsed?.choices?.[0]?.delta?.content;
+          if (typeof content === "string" && content) {
+            yield content;
+          }
+        } catch {
+          // 跳过格式异常的 SSE 行
+        }
+      }
+    }
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function callZhipuChat(messages: ChatMessage[], timeoutMs = 25000) {

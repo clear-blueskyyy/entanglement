@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import PathReveal from "./components/PathReveal";
-import { ApiRequestError, createEntanglement, getDailyPair } from "./services/api";
+import { ApiRequestError, createEntanglementStream, getDailyPair } from "./services/api";
 import type { DailyPairResult, EntangleRequest, EntanglementResult } from "./types";
 
 const loadingHints = [
@@ -460,6 +460,8 @@ export default function App() {
   const [heroHovered, setHeroHovered] = useState(false);
   const resultRef = useRef<HTMLElement | null>(null);
   const heroDecoCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  // 持有当前流式请求的取消函数，新请求到来时先取消旧流
+  const cancelStreamRef = useRef<(() => void) | null>(null);
 
   const activeLoadingHint = loadingHints[loadingHintIndex] ?? loadingHints[0];
   const activeLoadingState = loadingStates[loadingHintIndex] ?? loadingStates[0];
@@ -781,63 +783,110 @@ export default function App() {
     }
   }
 
-  async function runEntangleRequest(request: EntangleRequest) {
-    try {
-      setLoading(true);
-      setLoadingHintIndex(0);
-      setError("");
-      setStatusNote("");
-      setErrorState(null);
-      setLastEntangleRequest(request);
+  function runEntangleRequest(request: EntangleRequest) {
+    // 取消上一个还在进行的流式请求
+    cancelStreamRef.current?.();
+    cancelStreamRef.current = null;
 
-      const response = await createEntanglement(request);
-      const payload = response.data;
+    setLoading(true);
+    setLoadingHintIndex(0);
+    setError("");
+    setStatusNote("");
+    setErrorState(null);
+    setLastEntangleRequest(request);
 
-      if (!isUsableResult(payload)) {
-        throw new Error("模型返回结构异常，请重试。");
-      }
+    // 收集全部路径，用于 onDone 时做质量评估和缓存
+    const collectedPaths: EntanglementResult["paths"] = [];
+    let firstPathArrived = false;
 
-      const normalizedResult = {
-        ...payload,
-        id: payload.id || makeId(),
-      };
+    const cancel = createEntanglementStream(request, {
+      onPath(path) {
+        collectedPaths.push(path);
 
-      setResult(normalizedResult);
-      saveCachedEntanglement(normalizedResult);
+        if (!firstPathArrived) {
+          firstPathArrived = true;
+          // 第一条路径到达：立即切换到揭示界面，停止 loading
+          setResult({
+            id: makeId(),
+            termA: request.termA,
+            termB: request.termB,
+            paths: [path],
+            createdAt: new Date().toISOString(),
+          });
+          setLoading(false);
+        } else {
+          // 后续路径：追加到 paths 数组
+          setResult((prev) =>
+            prev ? { ...prev, paths: [...prev.paths, path] } : null
+          );
+        }
+      },
 
-      const quality = assessResultQuality(normalizedResult);
-      if (quality.weak) {
-        setStatusNote(`已生成路径，但${quality.note}。你可以点“换一条更妙的路径”再试一次。`);
-      }
-    } catch (err) {
-      const cachedResult = loadCachedEntanglement(request.termA, request.termB);
-      if (cachedResult) {
-        setError("");
-        setErrorState(null);
-        setResult({
-          ...cachedResult,
-          id: makeId("cache"),
+      onDone(_requestId) {
+        cancelStreamRef.current = null;
+
+        if (collectedPaths.length === 0) {
+          // 极端情况：SSE 结束但没有路径（正常由 error 事件处理）
+          setLoading(false);
+          return;
+        }
+
+        // 全量路径收齐后做质量提示 + 缓存
+        const finalResult: EntanglementResult = {
+          id: makeId(),
+          termA: request.termA,
+          termB: request.termB,
+          paths: collectedPaths,
+          createdAt: new Date().toISOString(),
+        };
+        saveCachedEntanglement(finalResult);
+
+        const quality = assessResultQuality(finalResult);
+        if (quality.weak) {
+          setStatusNote(`已生成路径，但${quality.note}。你可以点"换一条更妙的路径"再试一次。`);
+        }
+      },
+
+      onError(err) {
+        cancelStreamRef.current = null;
+
+        if (firstPathArrived) {
+          // 已经展示了内容，只在 note 里提示，不覆盖 result
+          setStatusNote("后续路径加载失败，当前展示的是已生成部分。");
+          return;
+        }
+
+        // 尚未收到任何路径 → 走缓存 + 错误状态
+        setLoading(false);
+        const cachedResult = loadCachedEntanglement(request.termA, request.termB);
+        if (cachedResult) {
+          setError("");
+          setErrorState(null);
+          setResult({
+            ...cachedResult,
+            id: makeId("cache"),
+          });
+          setStatusNote(
+            request.regenerate
+              ? "这次没算出更妙的新路径，先回到你上次成功生成的版本。"
+              : "网络不稳，先打开你上次成功生成过的路径。"
+          );
+          return;
+        }
+
+        const clientError = toClientError(err, "请求失败，请稍后再试。");
+        setError(clientError.message);
+        setErrorState({
+          scope: "entangle",
+          retryable: clientError.retryable,
         });
-        setStatusNote(
-          request.regenerate
-            ? "这次没算出更妙的新路径，先回到你上次成功生成的版本。"
-            : "网络不稳，先打开你上次成功生成过的路径。"
-        );
-        return;
-      }
+      },
+    });
 
-      const clientError = toClientError(err, "请求失败，请稍后再试。");
-      setError(clientError.message);
-      setErrorState({
-        scope: "entangle",
-        retryable: clientError.retryable,
-      });
-    } finally {
-      setLoading(false);
-    }
+    cancelStreamRef.current = cancel;
   }
 
-  async function handleEntangle(regenerate = false) {
+  function handleEntangle(regenerate = false) {
     const normalizedA = termA.trim();
     const normalizedB = termB.trim();
 
@@ -878,7 +927,7 @@ export default function App() {
       }
     }
 
-    await runEntangleRequest({
+    runEntangleRequest({
       termA: normalizedA,
       termB: normalizedB,
       regenerate,

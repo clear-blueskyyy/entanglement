@@ -13,6 +13,7 @@
 import {
   buildRequestId,
   callZhipuChat,
+  callZhipuChatStream,
   checkRateLimit,
   createErrorPayload,
   extractJson,
@@ -25,8 +26,89 @@ import {
   buildEntangleSystemPrompt,
   buildEntangleUserPrompt,
 } from "./_lib/prompt/entangle.js";
-import { validateResult, isAbortError, isInvalidModelOutputError, TERM_MAX_LENGTH } from "./_lib/validate.js";
+import { validateResult, validateSinglePath, isAbortError, isInvalidModelOutputError, TERM_MAX_LENGTH } from "./_lib/validate.js";
 import { buildFallbackPaths, shouldFallbackToSafePath } from "./_lib/fallback.js";
+import { PathStreamExtractor } from "./_lib/stream.js";
+
+// ─── 流式路径生成（SSE，单轮，首路径优先） ────────────────────────────────────
+
+async function generatePathsStream(
+  termA: string,
+  termB: string,
+  regenerate: boolean,
+  requestId: string,
+  res: any
+) {
+  // 流式只使用第 1 轮配置（balanced，超时 55s）
+  const attempt = buildAttempts()[0];
+  const systemPrompt = buildEntangleSystemPrompt(attempt.goodCaseIndices, attempt.badCaseIndices);
+  const messages = [
+    { role: "system" as const, content: systemPrompt },
+    { role: "user" as const, content: buildEntangleUserPrompt(termA, termB, regenerate, attempt.strategy) },
+  ];
+
+  const extractor = new PathStreamExtractor();
+  let validatedCount = 0;
+
+  try {
+    const stream = callZhipuChatStream(messages, attempt.timeoutMs);
+    for await (const chunk of stream) {
+      const pathJsons = extractor.feed(chunk);
+      for (const pathJson of pathJsons) {
+        try {
+          const parsed = JSON.parse(pathJson) as unknown;
+          const validated = validateSinglePath(parsed, termA, termB);
+          res.write(`event: path\ndata: ${JSON.stringify(validated)}\n\n`);
+          validatedCount++;
+        } catch {
+          // 单条路径结构或质量不达标，跳过继续
+        }
+      }
+    }
+
+    // 流正常结束但未提取到有效路径 → 用兜底全量解析再试一次
+    if (validatedCount === 0) {
+      const accumulated = extractor.getAccumulated();
+      try {
+        const rawParsed = extractJson(accumulated);
+        const raw = Array.isArray(rawParsed) ? { paths: rawParsed } : rawParsed;
+        const paths = validateResult(raw, termA, termB);
+        for (const path of paths) {
+          res.write(`event: path\ndata: ${JSON.stringify(path)}\n\n`);
+          validatedCount++;
+        }
+      } catch {
+        res.write(
+          `event: error\ndata: ${JSON.stringify({
+            code: "E_INVALID_MODEL_OUTPUT",
+            message: "模型多轮生成后仍未通过质量校验，请重试",
+            retryable: true,
+          })}\n\n`
+        );
+        res.end();
+        return;
+      }
+    }
+
+    res.write(`event: done\ndata: ${JSON.stringify({ requestId, validatedCount })}\n\n`);
+  } catch (error) {
+    let code = "E_INTERNAL";
+    let message = "服务内部错误";
+    let retryable = true;
+
+    if (isAbortError(error)) {
+      code = "E_MODEL_TIMEOUT";
+      message = "模型生成超时，请重试";
+    } else if (error instanceof Error && error.message.includes("provider status")) {
+      code = "E_PROVIDER_UNAVAILABLE";
+      message = "上游服务暂不可用，请稍后重试";
+    }
+
+    res.write(`event: error\ndata: ${JSON.stringify({ code, message, retryable })}\n\n`);
+  } finally {
+    res.end();
+  }
+}
 
 // ─── 路径生成核心（多轮尝试） ─────────────────────────────────────────────────
 
@@ -118,6 +200,17 @@ export default async function handler(req: any, res: any) {
       400,
       createErrorPayload(requestId, "E_BAD_REQUEST", `termA 与 termB 长度不能超过 ${TERM_MAX_LENGTH} 字符`, false)
     );
+    return;
+  }
+
+  // 流式 SSE 分支（前端携带 Accept: text/event-stream 时走此路径）
+  if (req.headers["accept"] === "text/event-stream") {
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    if (typeof res.flushHeaders === "function") res.flushHeaders();
+    await generatePathsStream(termA, termB, regenerate, requestId, res);
     return;
   }
 

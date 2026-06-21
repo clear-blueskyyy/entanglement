@@ -120,11 +120,11 @@ function buildBaseSystemPrompt(
     "1. 先把起点和终点还原成现实场景：人物、组织、制度、平台、材料、产品、职业、地理或利益结构。",
     "2. 判断最适合这组输入的妙感类型；如果要输出多条路径，优先选择不同的妙感类型。",
     "3. 先确定枢纽节点。它可以是共同的因、同构的骨架、让反面显形的机制、跨尺度的接口、承重的具体物，或被忽略的中介角色。",
-    "4. 再从枢纽节点向两端延展，补齐 3-5 个中间节点；每一步都要问自己：为什么偏偏是这条链，而不是任何输入都能套上的通用链。",
+    "4. 再从枢纽节点向两端延展，补齐 3 个中间节点（不多不少）；每一步都要问自己：为什么偏偏是这条链，而不是任何输入都能套上的通用链。",
     "5. 自检：能同时收住起点终点的链路优先；依赖抽象大词、文化联想、情绪投射或虚构机构名的路径直接推翻重来；拿不准时减少条数。",
     "",
     "【节点选择规范】",
-    "1. 每条路径包含 3-5 个中间节点，节点不能重复，不能等于起点或终点。",
+    "1. 每条路径包含 3 个中间节点，不多不少，节点不能重复，不能等于起点或终点。",
     "2. 节点必须是现实世界中可指认的对象或机制，例如：组织、制度、平台、作品、人物、材料、设备、事件、职业、合同、媒介、地理位置。",
     "3. 节点名本身优先写成可指认的名词，不要把结果判断、效果描述、气氛词、趋势词直接当节点名。坏例：创造力觉醒、菜单创新空间、灰色资金流转。好例：工坊制度、冷链展示柜、地下汇兑店。",
     "4. 现实锚点可以是：供应链、合同许可、土地设备、数据标注、诉讼补贴、组织媒介等具体物或制度，不限于此。",
@@ -156,26 +156,26 @@ function buildBaseSystemPrompt(
     "【Good Cases】",
     ...selectedGoodCases,
     "",
-    "【输出格式】",
-    '{"paths":[{"title":"4-10字标题","hook":"一句钩子，说明这条路线从哪里拐过去，并回扣起点与终点","surprise":"一句话指出最妙的意外点，并回扣起点与终点","surpriseIndex":8,"nodes":[{"term":"具体节点","connectionToNext":"这一跳为何会把故事推向下一跳，要写具体机制","detail":"这个节点为何关键，要写现实信息"}],"summary":"40-100字，总结这条路径真正妙在哪里，并明确点回起点与终点"}]}',
+    "【输出格式】nodes 数组必须恰好包含 3 个节点：",
+    '{"paths":[{"title":"4-10字标题","hook":"一句钩子，说明这条路线从哪里拐过去，并回扣起点与终点","surprise":"一句话指出最妙的意外点，并回扣起点与终点","surpriseIndex":8,"nodes":[{"term":"节点1","connectionToNext":"这一跳为何会把故事推向下一跳，要写具体机制","detail":"这个节点为何关键，要写现实信息"},{"term":"节点2","connectionToNext":"这一跳为何会把故事推向下一跳，要写具体机制","detail":"这个节点为何关键，要写现实信息"},{"term":"节点3","connectionToNext":"这一跳为何会把故事推向下一跳，要写具体机制","detail":"这个节点为何关键，要写现实信息"}],"summary":"40-100字，总结这条路径真正妙在哪里，并明确点回起点与终点"}]}',
     "全部输出必须是中文，且只能输出合法 JSON。不要输出 markdown、解释、注释或前后缀。",
   ].join("\n");
 }
 
-// 每轮复用的静态系统 prompt（全部 9 好例 + 4 坏例），供首次调用
+// 每轮复用的静态系统 prompt（6 好例覆盖全部妙感类型 + 2 坏例），供首次调用
 const FULL_SYSTEM_PROMPT = buildBaseSystemPrompt(
-  [0, 1, 2, 3, 4, 5, 6, 7, 8],
-  [0, 1, 2, 3]
+  [0, 1, 2, 3, 4, 5],
+  [0, 1]
 );
 
 export function buildEntangleSystemPrompt(
-  goodCaseIndices: readonly number[] = [0, 1, 2, 3, 4, 5, 6, 7, 8],
-  badCaseIndices: readonly number[] = [0, 1, 2, 3]
+  goodCaseIndices: readonly number[] = [0, 1, 2, 3, 4, 5],
+  badCaseIndices: readonly number[] = [0, 1]
 ): string {
   // 如果使用默认参数，直接返回预构建的静态 prompt，避免每次重新拼接
   if (
-    goodCaseIndices.length === 9 &&
-    badCaseIndices.length === 4 &&
+    goodCaseIndices.length === 6 &&
+    badCaseIndices.length === 2 &&
     goodCaseIndices[0] === 0 &&
     badCaseIndices[0] === 0
   ) {
@@ -220,15 +220,15 @@ export function buildAttempts(): AttemptConfig[] {
     {
       timeoutMs: ATTEMPT_TIMEOUTS_MS[0],
       strategy: "balanced",
-      // 第1轮：冷启动，使用全套例子
-      goodCaseIndices: [0, 1, 2, 3, 4, 5, 6, 7, 8],
-      badCaseIndices: [0, 1, 2, 3],
+      // 第1轮：6好例覆盖全部妙感类型，2坏例保留最典型的
+      goodCaseIndices: [0, 1, 2, 3, 4, 5],
+      badCaseIndices: [0, 1],
     },
     {
       timeoutMs: ATTEMPT_TIMEOUTS_MS[1],
       strategy: "anti_generic",
-      // 第2轮：修正轮，去掉实战标杆中最后两个，减少坏例到2个
-      goodCaseIndices: [0, 1, 2, 3, 4, 5, 6],
+      // 第2轮：修正轮，减少到4种核心妙感类型，保留1坏例
+      goodCaseIndices: [0, 1, 2, 3, 4, 5],
       badCaseIndices: [0, 1],
     },
     {
