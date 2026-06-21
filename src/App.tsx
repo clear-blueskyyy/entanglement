@@ -129,6 +129,7 @@ const previewResult: EntanglementResult = {
       hook: "真正把故事拧起来的，不是海底本身，而是谁能把矿产变成芯片里的定价权。",
       surprise: "深海采矿最后碰到的不是海洋伦理，而是韩国年轻人对财阀与就业的情绪。",
       surpriseIndex: 8,
+      connectionFromStart: "深海采矿的核心竞争力在于获取他国无法轻易开采的稀土矿权，这一资源控制权直接进入地缘博弈。",
       nodes: [
         {
           term: "海底稀土矿权",
@@ -159,6 +160,7 @@ const previewResult: EntanglementResult = {
       hook: "海底资源并不会直接通向选票，它先经过了一整套港口、航运与城市经济的传导。",
       surprise: "最意外的一跳，是从采矿船队跳到韩国沿海城市的票仓情绪。",
       surpriseIndex: 7,
+      connectionFromStart: "深海采矿作业必须依赖专业工程船队，每一个新开采项目都会拉动深海工程船的建造与调度需求。",
       nodes: [
         {
           term: "深海工程船",
@@ -189,6 +191,7 @@ const previewResult: EntanglementResult = {
       hook: "它先绕进新能源材料，再从产业政策折回韩国选举里的价值排序。",
       surprise: "深海采矿最终会逼人表态：到底把气候正义排在前面，还是把制造业安全排在前面。",
       surpriseIndex: 9,
+      connectionFromStart: "深海海底富含镍、钴、锰等电池关键矿物，各国将深海采矿项目定性为保障新能源转型的战略原料来源。",
       nodes: [
         {
           term: "电池关键矿物",
