@@ -6,7 +6,7 @@ const DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1";
 const ZHIPU_ENDPOINT = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
 const DEFAULT_FRIDAY_MODEL = "gpt-5.4";
 const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
-const DEFAULT_DEEPSEEK_MODEL = "deepseek-chat";
+const DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-pro";
 const DEFAULT_ZHIPU_MODEL = "glm-4-flash";
 
 export type ChatMessage = {
