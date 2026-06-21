@@ -162,20 +162,20 @@ function buildBaseSystemPrompt(
   ].join("\n");
 }
 
-// 每轮复用的静态系统 prompt（6 好例覆盖全部妙感类型 + 2 坏例），供首次调用
+// 每轮复用的静态系统 prompt（全部 9 好例 + 4 坏例），供首次调用
 const FULL_SYSTEM_PROMPT = buildBaseSystemPrompt(
-  [0, 1, 2, 3, 4, 5],
-  [0, 1]
+  [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  [0, 1, 2, 3]
 );
 
 export function buildEntangleSystemPrompt(
-  goodCaseIndices: readonly number[] = [0, 1, 2, 3, 4, 5],
-  badCaseIndices: readonly number[] = [0, 1]
+  goodCaseIndices: readonly number[] = [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  badCaseIndices: readonly number[] = [0, 1, 2, 3]
 ): string {
   // 如果使用默认参数，直接返回预构建的静态 prompt，避免每次重新拼接
   if (
-    goodCaseIndices.length === 6 &&
-    badCaseIndices.length === 2 &&
+    goodCaseIndices.length === 9 &&
+    badCaseIndices.length === 4 &&
     goodCaseIndices[0] === 0 &&
     badCaseIndices[0] === 0
   ) {
@@ -218,14 +218,14 @@ export function buildAttempts(): AttemptConfig[] {
     {
       timeoutMs: ATTEMPT_TIMEOUTS_MS[0],
       strategy: "balanced",
-      // 第1轮：6好例覆盖全部妙感类型，2坏例保留最典型的
-      goodCaseIndices: [0, 1, 2, 3, 4, 5],
-      badCaseIndices: [0, 1],
+      // 第1轮：全套 9 好例 + 4 坏例
+      goodCaseIndices: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+      badCaseIndices: [0, 1, 2, 3],
     },
     {
       timeoutMs: ATTEMPT_TIMEOUTS_MS[1],
       strategy: "anti_generic",
-      // 第2轮：修正轮，减少到4种核心妙感类型，保留1坏例
+      // 第2轮：去掉实战标杆，保留 6 种妙感类型例 + 2 坏例
       goodCaseIndices: [0, 1, 2, 3, 4, 5],
       badCaseIndices: [0, 1],
     },
