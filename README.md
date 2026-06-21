@@ -42,7 +42,6 @@
 - 已补齐输入校验、请求超时、错误提示、非 JSON 响应兜底
 - 已实现前端重试与缓存回退（失败时可回到最近成功结果）
 - 已实现服务端保底路径策略：当模型超时/输出不合规/上游不稳定时，`/api/entangle` 仍返回可揭示路径，避免主流程中断
-- 已对齐 `api/entangle.ts` 与 `local-server.mjs` 的校验与兜底行为
 - 已验证本地构建可通过，项目可启动并可在 CatPaw 内预览
 
 ### 还没完成
@@ -103,7 +102,7 @@
 这是项目现在最重要的理解点之一：
 
 - **设计预览态**：依赖前端内置的 `previewResult`，用于快速展示完整体验
-- **真实接口态**：依赖本地 `local-server.mjs` 或 Vercel `api/*.ts` 返回模型结果
+- **真实接口态**：依赖 Vercel `api/*.ts` 返回模型结果（本地调试用 `tsx` 直接运行 TypeScript 文件）
 
 这两条线目前已经共存并完成可用性收口（真实链路失败时不会直接中断）。
 
@@ -139,7 +138,7 @@
 | `api/_lib/prompt/entangle.ts` | Prompt 模板；包含系统 prompt、好例/坏例、三轮 attempt 策略；产品调优的核心入口 |
 | `api/_lib/validate.ts` | 结构校验 + 质量过滤；包含 `FORBIDDEN_BRIDGES` 黑名单、`validateResult()`、`collectPathIssues()`、错误分类工具函数，导出 `TERM_MAX_LENGTH` 常量 |
 | `api/_lib/fallback.ts` | 保底路径模块；在 `ENTANGLE_ENABLE_FALLBACK=1` 且 provider 不可用时触发，提供应急路径防止页面空白 |
-| `local-server.mjs` | 本地开发调试用 API 服务器，是 `api/` TypeScript 文件的 JavaScript 镜像；**修改任何业务逻辑时需同步更新对应的 TypeScript 源文件** |
+| `api/_lib/stream.ts` | SSE 流式路径提取；`PathStreamExtractor` 用括号深度计数法，从模型流式输出中检测完整 path 对象，第一条完成即推送给前端 |
 | `vercel.json` | Vercel 函数配置；将 `api/*.ts` 的 `maxDuration` 设为 60 秒（默认 30 秒不够用，三轮 attempt 最长约 55 秒） |
 
 ### 文档文件
@@ -172,8 +171,8 @@
 - 首页展示品牌、输入、今日推荐、示例路径入口
 - 可通过按钮直接加载示例结果页
 - 可通过真实 API 生成每日配对和路径
-- 结果页支持 1 条或多条路径切换
-- 每条路径支持 3-5 个中间节点的逐个揭示
+- 结果页展示 1 条路径，SSE 流式输出，第一条路径约 5-7s 后可见
+- 每条路径固定 3 个中间节点，支持逐个揭示
 - 全部揭示后会触发收尾仪式并展示路径概览
 - 当模型输出异常、超时或上游波动时，`/api/entangle` 会自动返回保底可用路径（需显式开启 `ENTANGLE_ENABLE_FALLBACK=1`，不中断主流程）
 - 前端在请求失败时支持重试、示例回退和本地缓存回退
@@ -192,8 +191,8 @@
 ### 1. 开发环境需要两个进程同时运行
 
 - `src/services/api.ts` 在开发环境会请求 `http://localhost:3001`
-- `local-server.mjs` 实际监听端口也是 `3001`（可通过 `LOCAL_API_PORT` 环境变量覆盖）
-- 前端 dev server（Vite 默认 5173）和后端 local-server（3001）需要**同时运行**，没有合并启动的 npm 脚本，需要两个终端分别执行
+- 本地 API 通过 `tsx` 直接运行 TypeScript 源文件，监听 `3001` 端口
+- 前端 dev server（Vite 默认 5173）和后端（3001）需要**同时运行**，没有合并启动的 npm 脚本，需要两个终端分别执行
 
 ### 2. Vite 默认是 `5173`，但本机可能自动切到 `5174`
 
@@ -250,9 +249,9 @@ OPENAI_MODEL    = deepseek-ai/DeepSeek-V3
 
 如果修改其中任何一处，另外两处也必须同步评估。详见 `DEPLOYMENT-RUNBOOK.md` 故障排查章节。
 
-### 6. `local-server.mjs` 是 TypeScript 源文件的手动镜像
+### 6. 本地 API 调试用 `tsx` 直接运行 TypeScript
 
-`local-server.mjs` 的文件注释明确说明它是"TypeScript api/ 目录的 JavaScript 镜像，用于本地测试"，修改任何逻辑时需同步更新对应的 TypeScript 源文件。当前已与 TypeScript 源文件对齐，支持 Friday / OpenAI / DeepSeek / 智谱四个 provider。
+`local-server.mjs` 已删除。本地调试 API 改用 `tsx`（项目已安装）直接运行 TypeScript 源文件，和生产代码完全一致，不再需要维护手动镜像。启动方式见下方「启动本地 API」。
 
 ### 7. 文档不是完全同一时期写的，要分清"哪个更新"
 
@@ -338,8 +337,10 @@ FRIDAY_MODEL=gpt-5.4
 ### 启动本地 API（开发态）
 
 ```bash
-node local-server.mjs
+node_modules/.bin/tsx api/entangle.ts
 ```
+
+> 注：`tsx` 会直接运行 TypeScript 源文件，和生产代码完全一致。如需完整 HTTP 服务（同时支持 `/api/entangle` 和 `/api/daily-pair`），需要写一个小的 Node.js 入口脚本包一层 `http.createServer`。也可以直接用 Vite dev server 的 proxy 配合 `vercel dev`（需 Vercel CLI 登录）。
 
 默认监听：`http://localhost:3001`
 
