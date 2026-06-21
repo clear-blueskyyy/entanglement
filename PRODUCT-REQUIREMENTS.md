@@ -711,7 +711,7 @@ align-items: start;
 | 激活透明度 | 1 |
 | 激活颜色 | `var(--text-secondary)` |
 | 过渡 | `opacity 0.4s var(--ease)` |
-| 文案 | 所有中间节点上方连线均显示该节点自身的 `connectionToNext` 字段，无第一条边特殊文案 |
+| 文案 | 共 4 条边，文案来源各不相同：边1（起点→节点0）显示路径级字段 `connectionFromStart`；边2、3（节点i→节点i+1）显示 `nodes[i-1].connectionToNext`；边4（末节点→终点）显示 `nodes[2].connectionToNext` |
 
 **节点本身**（两种状态）：
 
@@ -965,12 +965,13 @@ interface EntanglementResult {
 
 ```typescript
 interface EntanglementPath {
-  title: string;           // 路径标题（如"稀土回路"）
-  hook: string;            // 一句话钩子
-  surprise: string;        // 意外之处描述
-  surpriseIndex: number;   // 意外指数（1–10）
-  nodes: EntanglementPathNode[];  // 中间节点数组（通常 3–5 个）
-  summary: string;         // 路径概览总结
+  title: string;              // 路径标题（如"稀土回路"）
+  hook: string;               // 一句话钩子
+  surprise: string;           // 意外之处描述
+  surpriseIndex: number;      // 意外指数（1–10）
+  connectionFromStart: string; // 起点→第一个中间节点的连接说明（Reveal Ritual 第一条边）
+  nodes: EntanglementPathNode[];  // 中间节点数组（固定 3 个）
+  summary: string;            // 路径概览总结
 }
 ```
 

@@ -416,8 +416,9 @@ interface NormalizedPath {
   title: string;
   hook: string;
   surprise: string;
-  surpriseIndex: number;   // 1-10 整数
-  nodes: NormalizedNode[]; // 固定 3 个节点
+  surpriseIndex: number;        // 1-10 整数
+  connectionFromStart: string;  // 起点→节点0 的连接说明（Reveal Ritual 第一条边）
+  nodes: NormalizedNode[];      // 固定 3 个节点
   summary: string;
 }
 
